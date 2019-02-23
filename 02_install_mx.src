@@ -1,0 +1,33 @@
+#!/bin/bash
+yum -y install postfix dovecot postfix-pcre
+rm -rf /etc/dovecot/conf.d
+
+# COPY MX CONFIGURATION FILES
+
+alternatives --set mta /usr/sbin/sendmail.postfix
+sudo groupadd -g 5000 vmail
+sudo useradd -m -u 5000 -g 5000 -s /bin/bash vmail
+postmap /etc/postfix/vmaps
+postmap /etc/postfix/smtp_header_checks
+
+chmod +x /usr/local/sbin/adddovecotuser
+chmod +x /usr/local/sbin/deldovecotuser
+
+openssl dhparam -out /etc/postfix/dhparams.pem 2048
+
+firewall-cmd --permanent --add-service=smtp
+firewall-cmd --permanent --add-port=465/tcp
+firewall-cmd --permanent --add-service=pop3
+firewall-cmd --reload
+firewall-cmd --list-all # list rules [optional]
+systemctl start saslauthd
+systemctl enable saslauthd
+systemctl status saslauthd
+systemctl start dovecot
+systemctl enable dovecot
+systemctl status dovecot
+systemctl start postfix
+systemctl enable postfix
+systemctl status postfix # check status [optional]
+
+

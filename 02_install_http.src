@@ -1,0 +1,28 @@
+#!/bin/bash
+yum -y install epel-release
+yum -y install httpd python-certbot-apache mod_ssl mod_security
+rm -rf /etc/httpd/conf/*
+rm -rf /etc/httpd/conf.d/*
+rm -rf /etc/httpd/conf.modules.d/*
+# COPY HTTP CONFIGURATION FILES
+mkdir -p /etc/httpd/ssl/
+openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout /etc/httpd/ssl/snakeoil.key -out /etc/httpd/ssl/snakeoil.crt -subj "/C=XX/L= /O= "
+mkdir -p /root/.config/letsencrypt/
+echo "rsa-key-size = 4096" > /root/.config/letsencrypt/cli.ini
+firewall-cmd --permanent --add-service=http
+firewall-cmd --permanent --add-service=https
+firewall-cmd --reload
+firewall-cmd --list-all # list rules [optional]
+systemctl start httpd
+systemctl enable httpd
+systemctl status httpd
+##
+## LETS ENCRYPT STUFF
+##
+mkdir -p /root/.config/letsencrypt/
+echo "rsa-key-size = 4096" > /root/.config/letsencrypt/cli.ini
+echo "0 1,11 * * * root sleep $(expr $RANDOM \% 3600); certbot renew --post-hook 'systemctl reload httpd'" > /etc/cron.d/certbot
+## TO GET A LETS ENCRYPT CERTIFICATE FOR example.com RUN:
+#certbot certonly -n --webroot -w /var/www/html/example.com -d example.com --register-unsafely-without-email --rsa-key-size 4096 --agree-tos
+## THEN
+#systemctl reload httpd

@@ -1,0 +1,9 @@
+#!/bin/bash
+yum -y install bind bind-utils
+# COPY NS CONFIGURATION FILES
+firewall-cmd --permanent --add-service=dns
+firewall-cmd --reload
+firewall-cmd --list-all # list rules [optional]
+systemctl start named
+systemctl enable named
+systemctl status named # check status [optional]
