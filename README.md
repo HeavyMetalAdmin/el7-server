@@ -1,6 +1,4 @@
----
-title: CENTOS 7 SERVER SCRIPTS
----
+% CENTOS 7 SERVER SCRIPTS
 
 Bootstrap a base CentOS 7 server system starting from a Minimal Install.
 
