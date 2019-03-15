@@ -1,4 +1,4 @@
-% CENTOS 7 SERVER SCRIPTS
+# CENTOS 7 SERVER SCRIPTS
 
 Bootstrap a base CentOS 7 server system starting from a Minimal Install.
 
@@ -11,14 +11,14 @@ Tested on/with:
 - Hetzner Cloud Servers
 
 
-# (Re-)Generate the scripts
+## (Re-)Generate the scripts
 
 ```
 ./00_generate_all.sh
 ```
 
 
-# The scripts
+## The scripts
 
 The scripts themselves can be installed individually, however, it is recommended
 to at least install 01* script before installing any 02* script.
@@ -27,7 +27,7 @@ Either run directly on server as `./02_install_http.sh` or run remotely
 via SSH as `cat 02_install_http.sh | ssh root@yourserver`
 
 
-## 01_install_base.sh
+### 01_install_base.sh
 
 **NOTE:** Please generate a suitable SSH key and copy it onto the machine via:
 
@@ -67,6 +67,7 @@ The `01_install_base.sh` installs and configures:
 - Auto updates with auto reboots on library and kernel updates
 - SSH (pubkey only, ed25519 only, and port 226 (for additional security))
 - firewall
+- rate limiting connection attempts to SSH to  3 / min
 
 **WARNING:** The SSH configuration is very restrictive. Take care to not
 accidentally lock yourself out of your system. Make sure you have placed a
@@ -75,7 +76,19 @@ suitable SSH key (see above) on the machine.
 **ADVICE:** It is advised you keep a second SSH connection open to the server
 so you can rescue the setup in case you lock yourself out of the system.
 
-## 02_install_http.sh (Apache and Let's Encrypt)
+**NOTE:** To remove the rate limiting run:
+```
+firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 0 -p tcp --dport 226 -m state --state NEW -m recent --set
+firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 1 -p tcp --dport 226 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset
+```
+
+**NOTE:** To see possible active rate limiting rules run:
+
+```
+firewall-cmd --direct --get-all-rules
+```
+
+### 02_install_http.sh (Apache and Let's Encrypt)
 
 Installs and configures Apache.
 
@@ -93,23 +106,73 @@ To get a domain redirection changes the configuration in step 3 above to `Use re
 
 **NOTE:** When connecting to the server without `Host:` header or to its IP or an unknown domain in the `Host:` header it will point to `/var/www/html/blank/` which contains a `robots.txt` which denials all robots. Connecting via HTTPS in addition serves an deliberately weak and outdated certificate. You an change this behavior by editing `/etc/httpd/conf/httpd.conf` yourself.
 
-### TODOs
+#### TODOs
 
 * Automate setting up domain and Let's Encrypt certificates.
 * `redirVHost` should first redirect to HTTPs on the same domain as requested, then redirect to final host, so it satisfies HSTS requirements.
 
 
-## 02_install_ns.sh (BIND name server)
+### 02_install_ns.sh (BIND name server)
 
-### TODOs
+#### DNSSEC
+
+```
+#!/bin/bash
+if [ $# -eq 0 ]; then
+	echo "Setup DNSSEC for a zone"
+	echo
+	echo "usage: ${0} zone"
+	echo
+	exit 1
+fi
+zone="${1}"
+cd /var/named/
+dnssec-keygen -r /dev/urandom -a NSEC3RSASHA1 -b 2048 -n ZONE ${zone}
+dnssec-keygen -r /dev/urandom -f KSK -a NSEC3RSASHA1 -b 4096 -n ZONE ${zone}
+#dnssec-signzone -t -S -A -3 $(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -o "${zone}" "${zone}"
+```
+
+```
+#!/bin/bash
+if [ $# -eq 0 ]; then
+	echo "DNSSEC sign a zone"
+	echo
+	echo "usage: ${0} zone"
+	echo
+	exit 1
+fi
+zone="${1}"
+cd /var/named/
+dnssec-signzone -t -S -A -3 $(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -o "${zone}" "${zone}"
+```
+
+#### TODOs
 
 * Automate zone generation / changes
 
-## 02_install_mx.sh (Postfix + Dovecot mail server)
+#### CDS
+
+
+
+### 02_install_mx.sh (Postfix + Dovecot mail server)
 
 Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt)
 
-### TODO
+#### Add email domain
+
+1. Add to: `/etc/postfix/vhosts`
+
+#### Add mail box
+
+1. Add to: `/etc/postfix/vmaps`
+2. `postmap /etc/postfix/vmaps`
+3. `adddovecotuser username@domain`
+4. `chmod 640 /etc/dovecot/passwd`
+5. `chown dovecot:dovecot /etc/dovecot/passwd`
+6. `chown -R 5000:5000 /home/vmail/`
+7. `systemctl reload dovecot`
+
+#### TODO
 
 * DKIM, DMARC: https://www.linode.com/docs/email/postfix/configure-spf-and-dkim-in-postfix-on-debian-8/
 * Spamassassin: https://www.akadia.com/services/postfix_spamassassin.html
@@ -117,23 +180,46 @@ Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt)
 * Backup MX: https://www.howtoforge.com/postfix_backup_mx
 * Squirrelmail (as a separate script)
 
-## 03_install_php.sh (PHP)
+### 03_install_php.sh (PHP)
 
 Requires: `02_install_http.sh`
 
-### TODO
+#### TODO
 
 * Cleanup, document and release script, which is basically just a `yum install php`
 
 
-## 03_install_mysql.sh (MySQL / MariaDB)
+### 03_install_mysql.sh (MySQL / MariaDB)
 
 Requires: `02_install_http.sh`
 
-### TODO
+#### TODO
 
 * Everything
 
+## Key integrity
 
+Make sure to check the integrity of the repository keys!
+
+```
+$ for i in $(ls /etc/pki/rpm-gpg/RPM-GPG-KEY-*); do gpg --with-fingerprint "${i}"; done
+pub  4096R/0x24C6A8A7F4A80EB5 2014-06-23 CentOS-7 Key (CentOS 7 Official Signing Key) <security@centos.org>
+      Key fingerprint = 6341 AB27 53D7 8A78 A7C2  7BB1 24C6 A8A7 F4A8 0EB5
+pub  2048R/0xD0F25A3CB6792C39 2014-07-15 CentOS-7 Debug (CentOS-7 Debuginfo RPMS) <security@centos.org>
+      Key fingerprint = 759D 690F 6099 2D52 6A35  8CBD D0F2 5A3C B679 2C39
+pub  4096R/0xC78893AC8FAE34BD 2014-06-04 CentOS-7 Testing (CentOS 7 Testing content) <security@centos.org>
+      Key fingerprint = BA02 A5E6 AFF9 70F7 269D  D972 C788 93AC 8FAE 34BD
+pub  1024D/0x309BC305BAADAE52 2009-03-17 elrepo.org (RPM Signing Key for elrepo.org) <secure@elrepo.org>
+      Key fingerprint = 96C0 104F 6315 4731 1E0B  B1AE 309B C305 BAAD AE52
+sub  2048g/0xF46A3776B8C66E6D 2009-03-17
+pub  4096R/0x6A2FAEA2352C64E5 2013-12-16 Fedora EPEL (7) <epel@fedoraproject.org>
+      Key fingerprint = 91E9 7D7C 4A5E 96F1 7F3E  888F 6A2F AEA2 352C 64E5
+pub  4096R/0xE98BFBE785C6CD8A 2011-06-25 Nux.Ro (rpm builder) <rpm@li.nux.ro>
+      Key fingerprint = 561C 96BD 2F7F DC2A DB5A  FD46 E98B FBE7 85C6 CD8A
+sub  4096R/0xAB41227CEDD81BD3 2011-06-25
+pub  1024D/0x54422A4B98AB5139 2010-05-18 Oracle Corporation (VirtualBox archive signing key) <info@virtualbox.org>
+      Key fingerprint = 7B0F AB3A 13B9 0743 5925  D9C9 5442 2A4B 98AB 5139
+sub  2048g/0xB6748A65281DDC4B 2010-05-18
+```
 
 

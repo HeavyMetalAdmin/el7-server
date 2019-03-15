@@ -1,5 +1,9 @@
 #!/bin/bash
-yum -y install bind bind-utils
+# yum -y install epel-release
+yum -y install bind bind-utils #haveged
+# yum -y install rng-tools
+# cat /dev/random | rngtest -c 1000
+# systemctl enable haveged
 # COPY NS CONFIGURATION FILES
 mkdir -p /etc
 cat > /etc/named.conf << PASTECONFIGURATIONFILE
@@ -30,6 +34,10 @@ options {
 		window 15;
 	};
 
+	dnssec-enable yes;
+	dnssec-validation yes;
+	dnssec-lookaside auto;
+
 };
 
 
@@ -45,7 +53,7 @@ include "/etc/named.root.key";
 zone "example.com" IN {
 	type slave;
 	masters {91.134.143.137; }; # ip of ns1
-	file "example.com";
+	file "example.com.signed";
 };
 */
 
