@@ -97,7 +97,7 @@ hosts where it says `# INSERT VHOSTS HERE` as follows:
 
 1. `Use noSSLVhost example.com` gives you a plain HTTP VHost for domain example.com with its webroot being `/var/www/html/example.com`
 
-2. Get a Let's Encrypt certificate for example.com domain via `./03_install_letsencrypt.sh example.com`.
+2. Get a Let's Encrypt certificate for example.com domain via `/usr/local/sbin/el7-letsencrypt.sh example.com`.
 
 3. Change the previous configuration to `Use Vhost example.com`. The domain is now using HTTPS with the configured Let's Encrypt certificate.
 
@@ -116,42 +116,13 @@ To get a domain redirection changes the configuration in step 3 above to `Use re
 
 #### DNSSEC
 
-```
-#!/bin/bash
-if [ $# -eq 0 ]; then
-	echo "Setup DNSSEC for a zone"
-	echo
-	echo "usage: ${0} zone"
-	echo
-	exit 1
-fi
-zone="${1}"
-cd /var/named/
-dnssec-keygen -r /dev/urandom -a NSEC3RSASHA1 -b 2048 -n ZONE ${zone}
-dnssec-keygen -r /dev/urandom -f KSK -a NSEC3RSASHA1 -b 4096 -n ZONE ${zone}
-#dnssec-signzone -t -S -A -3 $(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -o "${zone}" "${zone}"
-```
-
-```
-#!/bin/bash
-if [ $# -eq 0 ]; then
-	echo "DNSSEC sign a zone"
-	echo
-	echo "usage: ${0} zone"
-	echo
-	exit 1
-fi
-zone="${1}"
-cd /var/named/
-dnssec-signzone -t -S -A -3 $(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -o "${zone}" "${zone}"
-```
+1. To setup DNSSEC for a zone, i.e., generate keys, etc. run: `/usr/local/sbin/el7-dnssec_setup example.com`
+2. To (re-)sign a zone, run: `/usr/local/sbin/el7-dnssec_sign example.com`
 
 #### TODOs
 
 * Automate zone generation / changes
-
-#### CDS
-
+* CDS: does not work in RHEL7
 
 
 ### 02_install_mx.sh (Postfix + Dovecot mail server)
@@ -166,7 +137,7 @@ Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt)
 
 1. Add to: `/etc/postfix/vmaps`
 2. `postmap /etc/postfix/vmaps`
-3. `adddovecotuser username@domain`
+3. `/usr/local/sbin/el7-adddovecotuser username@domain`
 4. `chmod 640 /etc/dovecot/passwd`
 5. `chown dovecot:dovecot /etc/dovecot/passwd`
 6. `chown -R 5000:5000 /home/vmail/`

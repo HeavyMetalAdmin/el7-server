@@ -15,8 +15,8 @@ ns2	IN A 2.2.2.2
 
 @	IN CAA 128 issue "letsencrypt.org"
 
-@	IN MX 1 mxlb.ispgateway.de.
-@	IN TXT "v=spf1 mx include:ispgateway.de -all"
+@	IN MX 1 mx.example.com.
+@	IN TXT "v=spf1 mx include:mx.example.com -all"
 
 @	IN A 3.3.3.3
 

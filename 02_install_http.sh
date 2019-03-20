@@ -14,6 +14,9 @@ mkdir -p /var
 mkdir -p /var/www
 mkdir -p /var/www/html
 mkdir -p /var/www/html/blank
+mkdir -p /usr
+mkdir -p /usr/local
+mkdir -p /usr/local/sbin
 cat > /etc/httpd/conf/httpd.conf << PASTECONFIGURATIONFILE
 ServerRoot "/etc/httpd"
 
@@ -985,6 +988,18 @@ PASTECONFIGURATIONFILE
 cat > /var/www/html/blank/robots.txt << PASTECONFIGURATIONFILE
 User-agent: *
 Disallow: /
+PASTECONFIGURATIONFILE
+cat > /usr/local/sbin/el7-letsencrypt << PASTECONFIGURATIONFILE
+#!/bin/bash
+if [ \$# -eq 0 ]; then
+	echo "Gets a Let's Encrypt certificate for a domain"
+	echo
+	echo "usage: \${0} <domain>"
+	echo
+	exit 1
+fi
+domain=\${1}
+certbot certonly -n --webroot -w /var/www/html/\${domain} -d \${domain} --register-unsafely-without-email --rsa-key-size 4096 --agree-tos
 PASTECONFIGURATIONFILE
 # COPY HTTP CONFIGURATION FILES
 mkdir -p /etc/httpd/ssl/

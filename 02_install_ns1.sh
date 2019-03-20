@@ -8,6 +8,9 @@ yum -y install bind bind-utils #haveged
 mkdir -p /etc
 mkdir -p /var
 mkdir -p /var/named
+mkdir -p /usr
+mkdir -p /usr/local
+mkdir -p /usr/local/sbin
 cat > /etc/named.conf << PASTECONFIGURATIONFILE
 options {
 	version none;
@@ -77,10 +80,47 @@ ns2	IN A 2.2.2.2
 
 @	IN CAA 128 issue "letsencrypt.org"
 
-@	IN MX 1 mxlb.ispgateway.de.
-@	IN TXT "v=spf1 mx include:ispgateway.de -all"
+@	IN MX 1 mx.example.com.
+@	IN TXT "v=spf1 mx include:mx.example.com -all"
 
 @	IN A 3.3.3.3
+
+PASTECONFIGURATIONFILE
+cat > /usr/local/sbin/el7-dnssec_setup << PASTECONFIGURATIONFILE
+#!/bin/bash
+if [ \$# -eq 0 ]; then
+	echo "Setup DNSSEC for a zone"
+	echo
+	echo "usage: \${0} zone"
+	echo
+	exit 1
+fi
+zone="\${1}"
+cd /var/named/
+dnssec-keygen -r /dev/urandom -a NSEC3RSASHA1 -b 2048 -n ZONE \${zone}
+dnssec-keygen -r /dev/urandom -f KSK -a NSEC3RSASHA1 -b 4096 -n ZONE \${zone}
+echo "*********************************************"
+echo "* The following goes into your parent zone: *"
+echo "*********************************************"
+cat "dsset-\${zone}."
+
+PASTECONFIGURATIONFILE
+cat > /usr/local/sbin/el7-dnssec_sign << PASTECONFIGURATIONFILE
+#!/bin/bash
+if [ \$# -eq 0 ]; then
+	echo "DNSSEC sign a zone"
+	echo
+	echo "usage: \${0} zone"
+	echo
+	exit 1
+fi
+zone="\${1}"
+cd /var/named/
+dnssec-signzone -t -S -A -3 \$(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -o "\${zone}" "\${zone}"
+echo "*********************************************"
+echo "* The following goes into your parent zone: *"
+echo "*********************************************"
+cat "dsset-\${zone}."
 
 PASTECONFIGURATIONFILE
 # COPY NS CONFIGURATION FILES
