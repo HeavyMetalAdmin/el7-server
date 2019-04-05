@@ -50,27 +50,44 @@ rm -r /etc/ssh/*
 ssh-keygen -t ed25519 -N "" -f /etc/ssh/ssh_host_ed25519_key # re-generate public key
 yum -y install policycoreutils-python
 
-# COPY SSH CONFIGURATION FILES
+# COPY CONFIGURATION FILES
 mkdir -p /etc
 mkdir -p /etc/ssh
-base64 -d > /etc/ssh/sshd_config << PASTECONFIGURATIONFILE
-IyBjaGFuZ2UgcG9ydCwgb2JzY3VyaXR5IGlzIGEgdmFsaWQgc2VjdXJpdHkgbGF5ZXIhClBvcnQg
-MjI2CgojIFZFUkJPU0UgbG9naW4gdG8gbG9nIHVzZXIncyBrZXkgZmluZ2VycHJpbnRzIG9uIGxv
-Z2luLgpMb2dMZXZlbCBWRVJCT1NFClN5c2xvZ0ZhY2lsaXR5IEFVVEhQUklWCgpIb3N0S2V5IC9l
-dGMvc3NoL3NzaF9ob3N0X2VkMjU1MTlfa2V5CkF1dGhvcml6ZWRLZXlzRmlsZSAlaC8uc3NoL2F1
-dGhvcml6ZWRfa2V5cwojUmV2b2tlZEtleXMgL2V0Yy9zc2gvcmV2b2tleWRfa2V5cyAjIFRPRE86
-IGNoZWNrIGlmIHRoaXMgd29ya3MKClBlcm1pdFJvb3RMb2dpbiBwcm9oaWJpdC1wYXNzd29yZCAj
-IE5PVEU6IGNoYW5nZSB0byAnbm8nIGZvciBtdWx0aXVzZXIgc3lzdGVtClVzZVBBTSB5ZXMKCkF1
-dGhlbnRpY2F0aW9uTWV0aG9kcyBwdWJsaWNrZXkgIyxrZXlib2FyZC1pbnRlcmFjdGl2ZSAjIFRP
-RE86IGRvIDJGQSBvciBrZXJiZXJvcwpQdWJrZXlBdXRoZW50aWNhdGlvbiB5ZXMKUGVybWl0RW1w
-dHlQYXNzd29yZHMgbm8KSG9zdGJhc2VkQXV0aGVudGljYXRpb24gbm8KUGFzc3dvcmRBdXRoZW50
-aWNhdGlvbiBubwpDaGFsbGVuZ2VSZXNwb25zZUF1dGhlbnRpY2F0aW9uIG5vCktlcmJlcm9zQXV0
-aGVudGljYXRpb24gbm8KR1NTQVBJQXV0aGVudGljYXRpb24gbm8KRXhwb3NlQXV0aGVudGljYXRp
-b25NZXRob2RzIG5ldmVyCgpYMTFGb3J3YXJkaW5nIG5vCklnbm9yZVJob3N0cyB5ZXMKClN0cmlj
-dE1vZGVzIHllcwpVc2VQcml2aWxlZ2VTZXBhcmF0aW9uIHNhbmRib3gKCk1heEF1dGhUcmllcyAx
-Cgo=
+cat > /etc/ssh/sshd_config << PASTECONFIGURATIONFILE
+# change port, obscurity is a valid security layer!
+Port 226
+
+# VERBOSE login to log user's key fingerprints on login.
+LogLevel VERBOSE
+SyslogFacility AUTHPRIV
+
+HostKey /etc/ssh/ssh_host_ed25519_key
+AuthorizedKeysFile %h/.ssh/authorized_keys
+#RevokedKeys /etc/ssh/revokeyd_keys # TODO: check if this works
+
+PermitRootLogin prohibit-password # NOTE: change to 'no' for multiuser system
+UsePAM yes
+
+AuthenticationMethods publickey #,keyboard-interactive # TODO: do 2FA or kerberos
+PubkeyAuthentication yes
+PermitEmptyPasswords no
+HostbasedAuthentication no
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+KerberosAuthentication no
+GSSAPIAuthentication no
+ExposeAuthenticationMethods never
+
+X11Forwarding no
+IgnoreRhosts yes
+
+StrictModes yes
+UsePrivilegeSeparation sandbox
+
+MaxAuthTries 1
+
 PASTECONFIGURATIONFILE
-# COPY SSH CONFIGURATION FILES
+# COPY CONFIGURATION FILES
 
 firewall-cmd --permanent --add-port=226/tcp --zone=public
 semanage port -a -t ssh_port_t -p tcp 226

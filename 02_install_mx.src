@@ -2,7 +2,7 @@
 yum -y install postfix dovecot postfix-pcre
 rm -rf /etc/dovecot/conf.d
 
-# COPY MX CONFIGURATION FILES
+# COPY CONFIGURATION FILES
 
 alternatives --set mta /usr/sbin/sendmail.postfix
 sudo groupadd -g 5000 vmail

@@ -67,7 +67,7 @@ The `01_install_base.sh` installs and configures:
 - Auto updates with auto reboots on library and kernel updates
 - SSH (pubkey only, ed25519 only, and port 226 (for additional security))
 - firewall
-- rate limiting connection attempts to SSH to  3 / min
+- rate limiting connection attempts to SSH to 3 / min per IP
 
 **WARNING:** The SSH configuration is very restrictive. Take care to not
 accidentally lock yourself out of your system. Make sure you have placed a
@@ -87,6 +87,10 @@ firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 1 -p tc
 ```
 firewall-cmd --direct --get-all-rules
 ```
+#### TODOs
+
+* Setup knockd: https://www.digitalocean.com/community/tutorials/how-to-use-port-knocking-to-hide-your-ssh-daemon-from-attackers-on-ubuntu
+
 
 ### 02_install_http.sh (Apache and Let's Encrypt)
 
@@ -101,18 +105,19 @@ hosts where it says `# INSERT VHOSTS HERE` as follows:
 
 3. Change the previous configuration to `Use Vhost example.com`. The domain is now using HTTPS with the configured Let's Encrypt certificate.
 
-To get a domain redirection changes the configuration in step 3 above to `Use redirVHost example.com example.org` which will redirect example.com to example.org (both using HTTPS!).
+To get a domain redirection change the configuration in step 3 above to `Use redirVHost example.com example.org` which will redirect example.com to example.org (both using HTTPS!).
 
 
-**NOTE:** When connecting to the server without `Host:` header or to its IP or an unknown domain in the `Host:` header it will point to `/var/www/html/blank/` which contains a `robots.txt` which denials all robots. Connecting via HTTPS in addition serves an deliberately weak and outdated certificate. You an change this behavior by editing `/etc/httpd/conf/httpd.conf` yourself.
+**NOTE:** When connecting to the server without `Host:` header or to its IP or an unknown domain in the `Host:` header it will point to `/var/www/html/blank/` which contains a `robots.txt` which denials all robots. Connecting via HTTPS in addition serves an deliberately weak and outdated certificate. You can change this behavior by editing `/etc/httpd/conf/httpd.conf` yourself.
 
 #### TODOs
 
 * Automate setting up domain and Let's Encrypt certificates.
-* `redirVHost` should first redirect to HTTPs on the same domain as requested, then redirect to final host, so it satisfies HSTS requirements.
 
 
 ### 02_install_ns.sh (BIND name server)
+
+Installs and configures BIND name server.
 
 #### DNSSEC
 
@@ -129,11 +134,11 @@ To get a domain redirection changes the configuration in step 3 above to `Use re
 
 Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt)
 
-#### Add email domain
+#### To add email domain
 
 1. Add to: `/etc/postfix/vhosts`
 
-#### Add mail box
+#### To add mail box
 
 1. Add to: `/etc/postfix/vmaps`
 2. `postmap /etc/postfix/vmaps`
@@ -143,7 +148,7 @@ Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt)
 6. `chown -R 5000:5000 /home/vmail/`
 7. `systemctl reload dovecot`
 
-#### TODO
+#### TODOs
 
 * DKIM, DMARC: https://www.linode.com/docs/email/postfix/configure-spf-and-dkim-in-postfix-on-debian-8/
 * Spamassassin: https://www.akadia.com/services/postfix_spamassassin.html
@@ -155,10 +160,10 @@ Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt)
 
 Requires: `02_install_http.sh`
 
-#### TODO
+#### TODOs
 
 * Cleanup, document and release script, which is basically just a `yum install php`
-
+* Stop using PHP
 
 ### 03_install_mysql.sh (MySQL / MariaDB)
 
@@ -166,7 +171,7 @@ Requires: `02_install_http.sh`
 
 #### TODO
 
-* Everything
+* Cleanup, document and release script
 
 ## Key integrity
 

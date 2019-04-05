@@ -50,7 +50,7 @@ rm -r /etc/ssh/*
 ssh-keygen -t ed25519 -N "" -f /etc/ssh/ssh_host_ed25519_key # re-generate public key
 yum -y install policycoreutils-python
 
-# COPY SSH CONFIGURATION FILES
+# COPY CONFIGURATION FILES
 
 firewall-cmd --permanent --add-port=226/tcp --zone=public
 semanage port -a -t ssh_port_t -p tcp 226

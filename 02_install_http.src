@@ -4,7 +4,7 @@ yum -y install httpd python-certbot-apache mod_ssl mod_security
 rm -rf /etc/httpd/conf/*
 rm -rf /etc/httpd/conf.d/*
 rm -rf /etc/httpd/conf.modules.d/*
-# COPY HTTP CONFIGURATION FILES
+# COPY CONFIGURATION FILES
 mkdir -p /etc/httpd/ssl/
 openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout /etc/httpd/ssl/snakeoil.key -out /etc/httpd/ssl/snakeoil.crt -subj "/C=XX/L= /O= "
 mkdir -p /root/.config/letsencrypt/

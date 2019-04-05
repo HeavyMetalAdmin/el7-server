@@ -2,7 +2,7 @@
 yum -y install postfix dovecot postfix-pcre
 rm -rf /etc/dovecot/conf.d
 
-# COPY MX CONFIGURATION FILES
+# COPY CONFIGURATION FILES
 mkdir -p /usr
 mkdir -p /usr/local
 mkdir -p /usr/local/sbin
@@ -450,7 +450,7 @@ cat > /etc/postfix/smtp_header_checks << PASTECONFIGURATIONFILE
 /^\\s*Mime-Version:/	IGNORE
 /^\\s*User-Agent:/	IGNORE
 PASTECONFIGURATIONFILE
-# COPY MX CONFIGURATION FILES
+# COPY CONFIGURATION FILES
 
 alternatives --set mta /usr/sbin/sendmail.postfix
 sudo groupadd -g 5000 vmail

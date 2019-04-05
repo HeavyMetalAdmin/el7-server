@@ -4,7 +4,7 @@ yum -y install bind bind-utils #haveged
 # yum -y install rng-tools
 # cat /dev/random | rngtest -c 1000
 # systemctl enable haveged
-# COPY NS CONFIGURATION FILES
+# COPY CONFIGURATION FILES
 mkdir -p /etc
 mkdir -p /var
 mkdir -p /var/named
@@ -123,7 +123,7 @@ echo "*********************************************"
 cat "dsset-\${zone}."
 
 PASTECONFIGURATIONFILE
-# COPY NS CONFIGURATION FILES
+# COPY CONFIGURATION FILES
 firewall-cmd --permanent --add-service=dns
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]
