@@ -5,6 +5,7 @@ yum -y install bind bind-utils #haveged
 # cat /dev/random | rngtest -c 1000
 # systemctl enable haveged
 # COPY CONFIGURATION FILES
+chown named:named -R /var/named
 firewall-cmd --permanent --add-service=dns
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]
