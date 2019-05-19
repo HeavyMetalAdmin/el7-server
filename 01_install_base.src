@@ -66,4 +66,4 @@ systemctl reload sshd
 systemctl status sshd # check status [optional]
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]
-
+firewall-cmd --direct --get-all-rules # list rate limiting rules [optional]

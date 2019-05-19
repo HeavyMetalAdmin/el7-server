@@ -80,6 +80,9 @@ so you can rescue the setup in case you lock yourself out of the system.
 ```
 firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 0 -p tcp --dport 226 -m state --state NEW -m recent --set
 firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 1 -p tcp --dport 226 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset
+firewall-cmd --permanent --direct --remove-rule ipv6 filter INPUT_direct 0 -p tcp --dport 226 -m state --state NEW -m recent --set
+firewall-cmd --permanent --direct --remove-rule ipv6 filter INPUT_direct 1 -p tcp --dport 226 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset
+firewall-cmd --reload
 ```
 
 **NOTE:** To see possible active rate limiting rules run:
