@@ -8,7 +8,7 @@ yum -y update
 yum -y install kernel
 grub2-mkconfig --output=/boot/grub2/grub.cfg
 
-# remove provider monitoring, setup and backdoor stuff
+# remove provider monitoring, setup and "backdoor" stuff
 yum -y remove cloud-init
 # ovh
 sed '/^[^#]/ s_\(^.*/usr/local/rtm/bin/rtm.*$\)_#\1_g' -i /etc/crontab
@@ -30,7 +30,7 @@ systemctl status yum-cron.service # check status [optional]
 #journalctl -xn # in case something went wrong
 
 # automatic reboots if libraries or kernel updated
-echo "#\!/bin/bash" > /etc/cron.hourly/9needs-restarting.cron
+echo '#!/bin/bash' > /etc/cron.hourly/9needs-restarting.cron
 echo "needs-restarting -r || shutdown -r" >> /etc/cron.hourly/9needs-restarting.cron
 chmod +x /etc/cron.hourly/9needs-restarting.cron
 

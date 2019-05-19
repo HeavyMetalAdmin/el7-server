@@ -104,7 +104,7 @@ hosts where it says `# INSERT VHOSTS HERE` as follows:
 
 1. `Use noSSLVhost example.com` gives you a plain HTTP VHost for domain example.com with its webroot being `/var/www/html/example.com`
 
-2. Get a Let's Encrypt certificate for example.com domain via `/usr/local/sbin/el7-letsencrypt.sh example.com`.
+2. Get a Let's Encrypt certificate for example.com domain via `/usr/local/sbin/el7-letsencrypt example.com`.
 
 3. Change the previous configuration to `Use Vhost example.com`. The domain is now using HTTPS with the configured Let's Encrypt certificate.
 
@@ -113,10 +113,11 @@ To get a domain redirection change the configuration in step 3 above to `Use red
 
 **NOTE:** When connecting to the server without `Host:` header or to its IP or an unknown domain in the `Host:` header it will point to `/var/www/html/blank/` which contains a `robots.txt` which denials all robots. Connecting via HTTPS in addition serves an deliberately weak and outdated certificate. You can change this behavior by editing `/etc/httpd/conf/httpd.conf` yourself.
 
-#### TODOs
+#### Remove a Let's Encrypt certificate
 
-* Automate setting up domain and Let's Encrypt certificates.
-
+```
+/usr/local/sbin/el7-letsencrypt-delete example.com
+```
 
 ### 02_install_ns.sh (BIND name server)
 
