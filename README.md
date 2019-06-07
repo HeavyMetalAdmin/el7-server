@@ -78,16 +78,21 @@ so you can rescue the setup in case you lock yourself out of the system.
 
 **NOTE:** To remove the rate limiting run:
 ```
-firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 0 -p tcp --dport 226 -m state --state NEW -m recent --set
-firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 1 -p tcp --dport 226 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset
-firewall-cmd --permanent --direct --remove-rule ipv6 filter INPUT_direct 0 -p tcp --dport 226 -m state --state NEW -m recent --set
-firewall-cmd --permanent --direct --remove-rule ipv6 filter INPUT_direct 1 -p tcp --dport 226 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset
+firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 0 -p tcp --dport 226 -m state --state NEW -m recent --set --name SSH_RATELIMIT
+firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 1 -p tcp --dport 226 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset --name SSH_RATELIMIT
+firewall-cmd --permanent --direct --remove-rule ipv6 filter INPUT_direct 0 -p tcp --dport 226 -m state --state NEW -m recent --set --name SSH_RATELIMIT
+firewall-cmd --permanent --direct --remove-rule ipv6 filter INPUT_direct 1 -p tcp --dport 226 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset --name SSH_RATELIMIT
 firewall-cmd --reload
+```
+
+**NOTE:** To see the recent list of IP addresses of this SSH rate-limiting rule run:
+```bash
+cat /proc/net/ipt_recent/SSH_RATELIMIT
 ```
 
 **NOTE:** To see possible active rate limiting rules run:
 
-```
+```bash
 firewall-cmd --direct --get-all-rules
 ```
 #### TODOs
@@ -133,10 +138,29 @@ Installs and configures BIND name server.
 * Automate zone generation / changes
 * CDS: does not work in RHEL7
 
+#### Fixes
+
+##### Journal errors
+
+Delete journals:
+
+```
+systemctl stop named
+rm -f /var/named/*.jnl
+systemctl start named
+```
 
 ### 02_install_mx.sh (Postfix + Dovecot mail server)
 
 Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt)
+
+This sets up:
+
+- SMTP (25/tcp)
+- SMTPs (465/tcp)
+- POP3s (995/tcp)
+- firewall
+- rate limiting connection attempts to POP3s to 3 / min per IP
 
 #### To add email domain
 

@@ -1,0 +1,19 @@
+#!/bin/bash
+if [ $# -gt 1 ]; then
+	echo "Remove SSH IP from white list"
+	echo
+	echo "usage: ${0} [IP]"
+	echo
+	echo "If IP is not given IP from \$SSH_CLIENT will be used."
+	echo
+	exit 1
+fi
+if [ $# -eq 0 ]; then
+	IP="$(echo $SSH_CLIENT | cut -d' ' -f1)"
+	echo "No IP given using IP from \$SSH_CLIENT (${IP})"
+else
+	IP="${1}"
+fi
+firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 0 -p tcp -s "${IP}" --dport 226 -m state --state NEW -j ACCEPT
+firewall-cmd --reload
+

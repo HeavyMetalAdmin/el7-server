@@ -59,6 +59,7 @@ zone "example.com" IN {
 
 PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
+chown named:named -R /var/named
 firewall-cmd --permanent --add-service=dns
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]

@@ -17,7 +17,7 @@ options {
 	listen-on port 53 { any; };
 	directory         "/var/named";
 	allow-query       { any; };
-	allow-update      { none; }; # ip of ns1
+	#allow-update      { none; }; # ip of ns1
 	allow-notify      { none; }; # ip of ns1
 	notify yes;
 	allow-transfer    { none; }; # ip of ns2
@@ -124,6 +124,7 @@ cat "dsset-\${zone}."
 
 PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
+chown named:named -R /var/named
 firewall-cmd --permanent --add-service=dns
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]
