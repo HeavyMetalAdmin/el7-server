@@ -162,19 +162,26 @@ This sets up:
 - firewall
 - rate limiting connection attempts to POP3s to 3 / min per IP
 
-#### To add email domain
+#### Add a mail box (user)
 
-1. Add to: `/etc/postfix/vhosts`
+```
+/usr/local/sbin/el7-mail_add_user user@example.com
+```
 
-#### To add mail box
+This will generate a postfix mailbox as well as a POP3 Dovecot mailbox.
 
-1. Add to: `/etc/postfix/vmaps`
-2. `postmap /etc/postfix/vmaps`
-3. `/usr/local/sbin/el7-adddovecotuser username@domain`
-4. `chmod 640 /etc/dovecot/passwd`
-5. `chown dovecot:dovecot /etc/dovecot/passwd`
-6. `chown -R 5000:5000 /home/vmail/`
-7. `systemctl reload dovecot`
+Mail user can then use:
+- SMPTs on 465/tcp with encrypted password and username `user@example.com`.
+- POP3s on 995/tcp with encrypted password and username `user@example.com`.
+- SMTP on 25/tcp to receive mail addressed to `user@example.com`.
+
+#### Delete a mail box (user)
+
+```
+/usr/local/sbin/el7-mail_delete_user user@example.com
+```
+
+This deletes the postfix and Dovecot mailbox of `user@example.com`.
 
 #### TODOs
 

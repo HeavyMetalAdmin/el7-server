@@ -9,7 +9,7 @@ if [ ! $# = 1 ]
  else
   user=`echo "$1" | cut -f1 -d "@"`
   domain=`echo "$1" | cut -s -f2 -d "@"`
-  if [ -x $domain ]
+  if [ -z "$domain" ]
    then
     echo -e "No domain given\nUsage: $0 username@domain: "
     exit 2
@@ -36,6 +36,7 @@ case $REPLY in
    y | Y)
     echo "Deleting files in /home/vmail/$domain/$user"
     rm -fr /home/vmail/$domain/$user
+    rmdir --ignore-fail-on-non-empty /home/vmail/$domain
    ;;
    * )
     echo "Not deleting files in /home/vmail/$domain/$user"
