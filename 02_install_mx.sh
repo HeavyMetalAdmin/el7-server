@@ -1,5 +1,6 @@
 #!/bin/bash
-yum -y install postfix dovecot postfix-pcre
+yum -y install epel-release
+yum -y install postfix dovecot postfix-pcre opendkim
 rm -rf /etc/dovecot/conf.d
 
 # COPY CONFIGURATION FILES
@@ -10,7 +11,10 @@ mkdir -p /etc
 mkdir -p /etc/dovecot
 mkdir -p /etc/postfix
 mkdir -p /etc/logrotate.d
-cat > /usr/local/sbin/el7-mail_add_user << PASTECONFIGURATIONFILE
+mkdir -p /etc/opendkim
+mkdir -p /etc/opendkim/keys
+mkdir -p /etc/opendkim/keys/example.com
+cat > /usr/local/sbin/el7-mx_add_user << PASTECONFIGURATIONFILE
 #!/bin/sh
 
 if [ ! \$# = 1 ];  then
@@ -72,7 +76,7 @@ chown dovecot:dovecot /etc/dovecot/passwd
 systemctl reload dovecot
 
 PASTECONFIGURATIONFILE
-cat > /usr/local/sbin/el7-mail_delete_user << PASTECONFIGURATIONFILE
+cat > /usr/local/sbin/el7-mx_delete_user << PASTECONFIGURATIONFILE
 #!/bin/bash
 #
 # deldovecotuser - for deleting virtual dovecot users
@@ -122,6 +126,29 @@ case \$REPLY in
   echo "Aborting..."
  ;;
 esac
+PASTECONFIGURATIONFILE
+cat > /usr/local/sbin/el7-mx_dkim << PASTECONFIGURATIONFILE
+#!/bin/sh
+
+if [ ! \$# = 1 ];  then
+	echo "Add DKIM key for domain"
+	echo "Usage: \${0} <domain>"
+	exit 1
+fi
+domain="\${1}"
+selector=\$(date +%Y%m%dT%H%M%S)
+mkdir -p /etc/opendkim/keys/\${domain}
+opendkim-genkey -b 2048 -d \${domain} -s \${selector} -a -D /etc/opendkim/keys/\${domain}/
+chown opendkim:opendkim -R /etc/opendkim/keys
+echo
+echo "Put the following DKIM key into your zone file:"
+cat /etc/opendkim/keys/\${domain}/\${selector}.txt
+echo
+echo "/etc/opendkim/KeyTable"
+echo "\${selector}._domainkey.\${domain} \${domain}:\${selector}:/etc/opendkim/keys/\${domain}/\${selector}.private"
+echo "/etc/opendkim/SigningTable"
+echo "*@\${domain} \${selector}._domainkey.\${domain}"
+echo
 PASTECONFIGURATIONFILE
 cat > /etc/dovecot/users << PASTECONFIGURATIONFILE
 info@example.com::5000:5000::/home/vmail/example.com/info/:/bin/false::
@@ -210,9 +237,9 @@ smtpd_banner = \$myhostname ESMTP
 biff = no
 
 # stuff
-myhostname = mx.0x0.li
+myhostname = mx.example.com
 myorigin = \$myhostname
-#mydestination = mx.0x0.li, 0x0.li, localhost, localhost.localdomain
+#mydestination = mx.example.com, example.com, localhost, localhost.localdomain
 relayhost =
 mynetworks = 127.0.0.0/8
 mailbox_size_limit = 0
@@ -243,8 +270,8 @@ bounce_queue_lifetime = 1h
 maximal_queue_lifetime = 1h
 
 # incoming
-smtpd_tls_cert_file = /etc/letsencrypt/live/mx.0x0.li/fullchain.pem
-smtpd_tls_key_file = /etc/letsencrypt/live/mx.0x0.li/privkey.pem
+smtpd_tls_cert_file = /etc/letsencrypt/live/mx.example.com/fullchain.pem
+smtpd_tls_key_file = /etc/letsencrypt/live/mx.example.com/privkey.pem
 smtpd_tls_security_level = may
 smtpd_tls_received_header = yes
 smtpd_tls_CAfile = /etc/ssl/certs/ca-bundle.trust.crt
@@ -525,6 +552,69 @@ cat > /etc/logrotate.d/dovecot << PASTECONFIGURATIONFILE
   endscript
 }
 PASTECONFIGURATIONFILE
+cat > /etc/opendkim.conf << PASTECONFIGURATIONFILE
+PidFile	/var/run/opendkim/opendkim.pid
+Syslog	yes
+SyslogSuccess	yes
+LogWhy	yes
+UserID	opendkim:opendkim
+Socket	inet:8891@localhost
+Umask	002
+
+Mode	sv
+SendReports	no
+# ReportAddress	"Example.com Postmaster" <postmaster@example.com>
+SoftwareHeader	no
+
+Canonicalization	relaxed/relaxed
+MinimumKeyBits	1024
+
+KeyTable	/etc/opendkim/KeyTable
+SigningTable	refile:/etc/opendkim/SigningTable
+
+##  Identifies a set of "external" hosts that may send mail through the server as one
+##  of the signing domains without credentials as such.
+# ExternalIgnoreList	refile:/etc/opendkim/TrustedHosts
+
+##  Identifies a set "internal" hosts whose mail should be signed rather than verified.
+# InternalHosts	refile:/etc/opendkim/TrustedHosts
+
+##  Contains a list of IP addresses, CIDR blocks, hostnames or domain names
+##  whose mail should be neither signed nor verified by this filter.  See man
+##  page for file format.
+# PeerList	X.X.X.X
+
+OversignHeaders	From
+
+PASTECONFIGURATIONFILE
+cat > /etc/opendkim/keys/example.com/20190714T225318.private << PASTECONFIGURATIONFILE
+-----BEGIN RSA PRIVATE KEY-----
+MIICWwIBAAKBgQDYV1LKMUQMa20a443NTCBM+TjJSpeRR8HaNMFfpCpLUnxRJSXl
+6zWJGtyo/mU8yJNmH0Z31FHqMYmyOc8Rw6Jxqr92uk6VI7GB2yZ0UJqz2Q54wrPE
+5rapFD5Gak3WaS5iBwwiMxusfp5WKNpxH/CTWyqk7IH072aSWIqVzoHj4wIDAQAB
+AoGAa7knn0hiwvBm9oGiZTxnxQw/63M5/3xEmZu1QiNjb/gVsO4XbeHt2WRHxdpO
+nLKfOrWOCDLvyvZ5wwYoBodshdSKoNwwTtNQyx9imtvwheLszXWdVnfweV8z7FhZ
+lsp/qxRP+4AEdHAYAPemagmpzrrdxirXCEP7K0WpH60WxikCQQDsCNUzzF7aOBUO
+Z1gdgwSRnoEseK8u/57WKSfcKYmcEvp7nxPIFnmIBrsjmRGl1BLPJHFVKj3nmYX7
+bHeuXPgtAkEA6qQLHj3oN+Oj8o2HaxX50yn0+qVlrX5f2wYNka4p7CU4vhphmL+E
+j44M0fiFQ8+Kl0UN0EVbdTGN3AkvX+lGTwJAY2rFAnBOc3OzysFUp/mLbxpoJicf
+ApjAekwTcfQ89fQ4dOFoH5r3zYeoQzIx8LsGwSEEa27DbE2J1YC2WEbocQJAakqV
+nsV8hJTil+X1ClWSLk47Y6+5N7afxaAgVXYIF6lk4vkgbQmVC1LWC+gAto81wQDP
+GSHSJGymTp76jwAlkQJACJw5N9kk4mJeNDv+v0a/27Y1BLaGtdbPeC9p2GPD/Cmd
+c0g+xr3WAzLt+QFadz2VTaBTwBYwfI/a0ncsLYEWfw==
+-----END RSA PRIVATE KEY-----
+PASTECONFIGURATIONFILE
+cat > /etc/opendkim/keys/example.com/20190714T225318.txt << PASTECONFIGURATIONFILE
+20190714T225318._domainkey.example.com.	IN	TXT	( "v=DKIM1; k=rsa; "
+	  "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDYV1LKMUQMa20a443NTCBM+TjJSpeRR8HaNMFfpCpLUnxRJSXl6zWJGtyo/mU8yJNmH0Z31FHqMYmyOc8Rw6Jxqr92uk6VI7GB2yZ0UJqz2Q54wrPE5rapFD5Gak3WaS5iBwwiMxusfp5WKNpxH/CTWyqk7IH072aSWIqVzoHj4wIDAQAB" )  ; ----- DKIM key 20190714T225318 for example.com
+PASTECONFIGURATIONFILE
+cat > /etc/opendkim/SigningTable << PASTECONFIGURATIONFILE
+*@example.com 20190714T225318._domainkey.example.com
+
+PASTECONFIGURATIONFILE
+cat > /etc/opendkim/KeyTable << PASTECONFIGURATIONFILE
+20190714T225318._domainkey.example.com example.com:20190714T225318:/etc/opendkim/keys/exampel.com/20190714T225318.private
+PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
 
 alternatives --set mta /usr/sbin/sendmail.postfix
@@ -562,5 +652,7 @@ systemctl status dovecot
 systemctl start postfix
 systemctl enable postfix
 systemctl status postfix # check status [optional]
-
+systemctl start opendkim
+systemctl enable opendkim
+systemctl status opendkim
 

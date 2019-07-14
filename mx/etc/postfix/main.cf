@@ -2,9 +2,9 @@ smtpd_banner = $myhostname ESMTP
 biff = no
 
 # stuff
-myhostname = mx.0x0.li
+myhostname = mx.example.com
 myorigin = $myhostname
-#mydestination = mx.0x0.li, 0x0.li, localhost, localhost.localdomain
+#mydestination = mx.example.com, example.com, localhost, localhost.localdomain
 relayhost =
 mynetworks = 127.0.0.0/8
 mailbox_size_limit = 0
@@ -35,8 +35,8 @@ bounce_queue_lifetime = 1h
 maximal_queue_lifetime = 1h
 
 # incoming
-smtpd_tls_cert_file = /etc/letsencrypt/live/mx.0x0.li/fullchain.pem
-smtpd_tls_key_file = /etc/letsencrypt/live/mx.0x0.li/privkey.pem
+smtpd_tls_cert_file = /etc/letsencrypt/live/mx.example.com/fullchain.pem
+smtpd_tls_key_file = /etc/letsencrypt/live/mx.example.com/privkey.pem
 smtpd_tls_security_level = may
 smtpd_tls_received_header = yes
 smtpd_tls_CAfile = /etc/ssl/certs/ca-bundle.trust.crt

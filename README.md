@@ -109,7 +109,7 @@ hosts where it says `# INSERT VHOSTS HERE` as follows:
 
 1. `Use noSSLVhost example.com` gives you a plain HTTP VHost for domain example.com with its webroot being `/var/www/html/example.com`
 
-2. Get a Let's Encrypt certificate for example.com domain via `/usr/local/sbin/el7-letsencrypt example.com`.
+2. Get a Let's Encrypt certificate for example.com domain via `/usr/local/sbin/el7-letsencrypt_setup example.com`.
 
 3. Change the previous configuration to `Use Vhost example.com`. The domain is now using HTTPS with the configured Let's Encrypt certificate.
 
@@ -121,7 +121,7 @@ To get a domain redirection change the configuration in step 3 above to `Use red
 #### Remove a Let's Encrypt certificate
 
 ```
-/usr/local/sbin/el7-letsencrypt-delete example.com
+/usr/local/sbin/el7-letsencrypt_delete example.com
 ```
 
 ### 02_install_ns.sh (BIND name server)
@@ -130,12 +130,13 @@ Installs and configures BIND name server.
 
 #### DNSSEC
 
-1. To setup DNSSEC for a zone, i.e., generate keys, etc. run: `/usr/local/sbin/el7-dnssec_setup example.com`
+1. To setup DNSSEC for a zone, i.e., generate (or regenerate) keys, etc. run: `/usr/local/sbin/el7-dnssec_setup example.com`
 2. To (re-)sign a zone, run: `/usr/local/sbin/el7-dnssec_sign example.com`
 
 #### TODOs
 
 * Automate zone generation / changes
+* Automated zone resigning; currently zones are signed with a validity of 1 year
 * CDS: does not work in RHEL7
 
 #### Fixes
@@ -165,7 +166,7 @@ This sets up:
 #### Add a mail box (user)
 
 ```
-/usr/local/sbin/el7-mail_add_user user@example.com
+/usr/local/sbin/el7-mx_add_user user@example.com
 ```
 
 This will generate a postfix mailbox as well as a POP3 Dovecot mailbox.
@@ -178,19 +179,23 @@ Mail user can then use:
 #### Delete a mail box (user)
 
 ```
-/usr/local/sbin/el7-mail_delete_user user@example.com
+/usr/local/sbin/el7-mx_delete_user user@example.com
 ```
 
 This deletes the postfix and Dovecot mailbox of `user@example.com`.
 
+#### DKIM
+
+Run `/usr/local/sbin/el7-mx_dkim` and follow the instructions.
+
+TODO: automate this
+
 #### TODOs
 
-* DKIM, DMARC: https://www.linode.com/docs/email/postfix/configure-spf-and-dkim-in-postfix-on-debian-8/
 * Spamassassin: https://www.akadia.com/services/postfix_spamassassin.html
 * Rate limiting: http://www.postfix.org/TUNING_README.html#conn_limit
 * Backup MX: https://www.howtoforge.com/postfix_backup_mx
 * Squirrelmail (as a separate script)
-* <https://serverfault.com/questions/919458/postfix-reject-incoming-mail-for-certain-recipients>
 
 ### 03_install_php.sh (PHP)
 

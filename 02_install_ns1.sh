@@ -65,9 +65,9 @@ PASTECONFIGURATIONFILE
 cat > /var/named/example.com << PASTECONFIGURATIONFILE
 \$ORIGIN example.com
 \$TTL 1d
-@ IN SOA need.to.know.only. info.example.com. (
+@ IN SOA ns1.example.com. info.example.com. (
 	2019011301 ; serial
-	1d ; refresh
+	12h ; refresh
 	1h ; retry
 	4w ; expire
 	1d ; nx ttl
@@ -81,9 +81,12 @@ ns2	IN A 2.2.2.2
 @	IN CAA 128 issue "letsencrypt.org"
 
 @	IN MX 1 mx.example.com.
-@	IN TXT "v=spf1 mx include:mx.example.com -all"
+@	IN TXT "v=spf1 mx ip4:4.4.4.4 ip6:0:0:0:0:0:ffff:404:404 -all"
+_dmarc	IN TXT "v=DMARC1;p=none;pct=100;ri=600;rua=mailto:dmarc-bie4YeeNeithoxuu@example.com"
 
 @	IN A 3.3.3.3
+mx	IN A 4.4.4.4
+mx	IN AAAA 0:0:0:0:0:ffff:404:404
 
 PASTECONFIGURATIONFILE
 cat > /usr/local/sbin/el7-dnssec_setup << PASTECONFIGURATIONFILE
@@ -99,6 +102,7 @@ zone="\${1}"
 cd /var/named/
 dnssec-keygen -r /dev/urandom -a NSEC3RSASHA1 -b 2048 -n ZONE \${zone}
 dnssec-keygen -r /dev/urandom -f KSK -a NSEC3RSASHA1 -b 4096 -n ZONE \${zone}
+dnssec-signzone -t -S -A -3 \$(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -o "\${zone}" "\${zone}"
 echo "*********************************************"
 echo "* The following goes into your parent zone: *"
 echo "*********************************************"
@@ -116,7 +120,7 @@ if [ \$# -eq 0 ]; then
 fi
 zone="\${1}"
 cd /var/named/
-dnssec-signzone -t -S -A -3 \$(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -o "\${zone}" "\${zone}"
+dnssec-signzone -t -S -A -3 \$(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -e +31536000 -o "\${zone}" "\${zone}"
 echo "*********************************************"
 echo "* The following goes into your parent zone: *"
 echo "*********************************************"

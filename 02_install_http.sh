@@ -989,19 +989,7 @@ cat > /var/www/html/blank/robots.txt << PASTECONFIGURATIONFILE
 User-agent: *
 Disallow: /
 PASTECONFIGURATIONFILE
-cat > /usr/local/sbin/el7-letsencrypt << PASTECONFIGURATIONFILE
-#!/bin/bash
-if [ \$# -eq 0 ]; then
-	echo "Gets a Let's Encrypt certificate for a domain"
-	echo
-	echo "usage: \${0} <domain>"
-	echo
-	exit 1
-fi
-domain=\${1}
-certbot certonly -n --webroot -w "/var/www/html/\${domain}" -d "\${domain}" --register-unsafely-without-email --rsa-key-size 4096 --agree-tos
-PASTECONFIGURATIONFILE
-cat > /usr/local/sbin/el7-letsencrypt-delete << PASTECONFIGURATIONFILE
+cat > /usr/local/sbin/el7-letsencrypt_delete << PASTECONFIGURATIONFILE
 #!/bin/bash
 if [ \$# -eq 0 ]; then
 	echo "Delete a Let's Encrypt certificate for a domain"
@@ -1012,6 +1000,18 @@ if [ \$# -eq 0 ]; then
 fi
 domain=\${1}
 certbot delete --cert-name "\${domain}"
+PASTECONFIGURATIONFILE
+cat > /usr/local/sbin/el7-letsencrypt_setup << PASTECONFIGURATIONFILE
+#!/bin/bash
+if [ \$# -eq 0 ]; then
+	echo "Gets a Let's Encrypt certificate for a domain"
+	echo
+	echo "usage: \${0} <domain>"
+	echo
+	exit 1
+fi
+domain=\${1}
+certbot certonly -n --webroot -w "/var/www/html/\${domain}" -d "\${domain}" --register-unsafely-without-email --rsa-key-size 4096 --agree-tos
 PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
 mkdir -p /etc/httpd/ssl/

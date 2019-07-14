@@ -1,5 +1,6 @@
 #!/bin/bash
-yum -y install postfix dovecot postfix-pcre
+yum -y install epel-release
+yum -y install postfix dovecot postfix-pcre opendkim
 rm -rf /etc/dovecot/conf.d
 
 # COPY CONFIGURATION FILES
@@ -39,5 +40,7 @@ systemctl status dovecot
 systemctl start postfix
 systemctl enable postfix
 systemctl status postfix # check status [optional]
-
+systemctl start opendkim
+systemctl enable opendkim
+systemctl status opendkim
 
