@@ -171,8 +171,8 @@ This sets up:
 This will generate a postfix mailbox as well as a POP3 Dovecot mailbox.
 
 Mail user can then use:
-- SMPTs on 465/tcp with encrypted password and username `user@example.com`.
-- POP3s on 995/tcp with encrypted password and username `user@example.com`.
+- SMPTs on 465/tcp with (CRAM-MD5) encrypted password and username `user@example.com`.
+- POP3s on 995/tcp with (CRAM-MD5) encrypted password and username `user@example.com`.
 - SMTP on 25/tcp to receive mail addressed to `user@example.com`.
 
 #### Delete a mail box (user)
@@ -190,6 +190,7 @@ This deletes the postfix and Dovecot mailbox of `user@example.com`.
 * Rate limiting: http://www.postfix.org/TUNING_README.html#conn_limit
 * Backup MX: https://www.howtoforge.com/postfix_backup_mx
 * Squirrelmail (as a separate script)
+* <https://serverfault.com/questions/919458/postfix-reject-incoming-mail-for-certain-recipients>
 
 ### 03_install_php.sh (PHP)
 

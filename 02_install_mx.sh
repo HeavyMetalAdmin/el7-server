@@ -210,9 +210,9 @@ smtpd_banner = \$myhostname ESMTP
 biff = no
 
 # stuff
-myhostname = mx.example.com
+myhostname = mx.0x0.li
 myorigin = \$myhostname
-#mydestination = mx.example.com, example.com, localhost, localhost.localdomain
+#mydestination = mx.0x0.li, 0x0.li, localhost, localhost.localdomain
 relayhost =
 mynetworks = 127.0.0.0/8
 mailbox_size_limit = 0
@@ -230,6 +230,7 @@ inet_interfaces = all
 
 # prevent leaking valid e-mail addresses
 disable_vrfy_command = yes
+strict_rfc821_envelopes = yes
 
 # appending .domain is the MUA's job.
 append_dot_mydomain = no
@@ -241,41 +242,61 @@ append_dot_mydomain = no
 bounce_queue_lifetime = 1h
 maximal_queue_lifetime = 1h
 
-
 # incoming
-smtpd_tls_cert_file = /etc/letsencrypt/live/mx.example.com/fullchain.pem
-smtpd_tls_key_file = /etc/letsencrypt/live/mx.example.com/privkey.pem
+smtpd_tls_cert_file = /etc/letsencrypt/live/mx.0x0.li/fullchain.pem
+smtpd_tls_key_file = /etc/letsencrypt/live/mx.0x0.li/privkey.pem
 smtpd_tls_security_level = may
 smtpd_tls_received_header = yes
 smtpd_tls_CAfile = /etc/ssl/certs/ca-bundle.trust.crt
 smtpd_tls_CApath = /etc/ssl/certs
 smtpd_tls_loglevel = 1
+smtpd_hard_error_limit = 1
+smtpd_helo_required     = yes
+smtpd_error_sleep_time = 0
 smtpd_tls_auth_only = yes
 smtpd_tls_mandatory_ciphers=high
 smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3
 smtpd_tls_exclude_ciphers=eNULL:aNULL:LOW:MEDIUM:DES:3DES:RC4:MD5:RSA:SHA1
 smtpd_tls_dh1024_param_file = \${config_directory}/dhparams.pem
+smtpd_delay_reject = yes
 smtpd_relay_restrictions =
-	permit_sasl_authenticated,
 	permit_mynetworks,
+	permit_sasl_authenticated,
 	defer_unauth_destination
-smtpd_recipient_restrictions =
-	permit_sasl_authenticated,
+smtpd_client_restrictions =
 	permit_mynetworks,
+	permit_sasl_authenticated,
+	check_sender_access hash:/etc/postfix/check_sender_access,
+	reject_rbl_client zen.spamhaus.org
+smtpd_helo_restrictions =
+	permit_mynetworks,
+	permit_sasl_authenticated,
 	reject_invalid_helo_hostname,
-	reject_non_fqdn_helo_hostname, 
+	reject_non_fqdn_helo_hostname,
+	reject_unknown_helo_hostname,
+	permit
+smtpd_sender_restrictions =
+	permit_mynetworks,
+	permit_sasl_authenticated,
+# move check_sender_access to smtpd_client_restrictions to whitelist also from rbl
+#	check_sender_access hash:/etc/postfix/check_sender_access,
+	reject_non_fqdn_sender,
+	reject_unknown_sender_domain,
+	reject_unlisted_sender,
+	permit
+smtpd_recipient_restrictions =
+	permit_mynetworks,
+	permit_sasl_authenticated,
+	check_recipient_access hash:/etc/postfix/check_recipient_access
+	reject_invalid_hostname,
+	reject_non_fqdn_hostname,
 	reject_non_fqdn_sender,
 	reject_non_fqdn_recipient,
 	reject_unknown_sender_domain,
 	reject_unknown_recipient_domain,
-	reject_unknown_reverse_client_hostname,
-	reject_rbl_client zen.spamhaus.org,
-	#reject_rhsbl_client dbl.spamhaus.org,
-	reject_unauth_destination
-smtpd_hard_error_limit = 1
-smtpd_helo_required     = yes
-strict_rfc821_envelopes = yes
-smtpd_error_sleep_time = 0
+	reject_unauth_destination,
+	reject_unknown_sender_domain,
+	permit
 
 # SASL
 # if you really want noplaintext you need to remove plain and login in /etc/dovecot/dovecot.conf auth_mechansims
@@ -286,6 +307,7 @@ smtpd_sasl_auth_enable = yes
 broken_sasl_auth_clients = no
 smtpd_sasl_type = dovecot
 smtpd_sasl_path = private/auth
+smtpd_sasl_authenticated_header = no
 #queue_directory = /var/spool/postfix
 
 
@@ -295,15 +317,36 @@ smtp_tls_CApath = /etc/ssl/certs
 smtp_tls_loglevel = 1
 smtp_tls_mandatory_ciphers=high
 smtp_tls_mandatory_protocols = !SSLv2, !SSLv3
-smtp_tls_security_level = verify
+# Unfortunately too many people don't know how to do SSL correctly
+#smtp_tls_security_level = verify
+# hence we don't verify :(
+smtp_tls_security_level = encrypt
 # clean private stuff from headers
-smtp_mime_header_checks = regexp:/etc/postfix/smtp_header_checks
+#smtp_mime_header_checks = regexp:/etc/postfix/smtp_mime_header_checks
 smtp_header_checks = regexp:/etc/postfix/smtp_header_checks
 
+# Slowing down SMTP clients that make many errors
+smtpd_error_sleep_time = 1s
+smtpd_soft_error_limit = 5
+smtpd_hard_error_limit = 10
+smtpd_junk_command_limit = 3
+# Measures against clients that make too many connections
+anvil_rate_time_unit = 60s
+smtpd_client_connection_count_limit = 3
+smtpd_client_connection_rate_limit = 6
+smtpd_client_message_rate_limit = 10
+# we only have around 3 legit recipients
+smtpd_client_recipient_rate_limit = 5
+# prevent brute forcing
+# only available in postfix > 3.1
+#smtpd_client_auth_rate_limit = 6
+smtpd_client_event_limit_exceptions = \$mynetworks
 
+# TODO: SPF
 # TODO: DKIM
 # TODO: DMARC
 
+alias_maps = hash:/etc/aliases
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/vhosts << PASTECONFIGURATIONFILE
 example.com
@@ -440,7 +483,9 @@ scache    unix  -       -       n       -       1       scache
 #  \${nexthop} \${user}
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/vmaps << PASTECONFIGURATIONFILE
-info@example.com	example.com/info/
+info@example.com example.com/info/
+catchall@example.com example.com/catchall/
+@example.com example.com/catchall/
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/dhparams.pem << PASTECONFIGURATIONFILE
 -----BEGIN DH PARAMETERS-----
@@ -453,12 +498,19 @@ YIrwf/GlpT6Akog46a9XBMduAfeb50ONwwIBAg==
 -----END DH PARAMETERS-----
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/smtp_header_checks << PASTECONFIGURATIONFILE
-/^\\s*Received:.*with ESMTPSA/	IGNORE
-/^\\s*X-Originating-IP:/	IGNORE
-/^\\s*X-Enigmail/	IGNORE
+/^\\s*Received:.*with ESMTPSA/ IGNORE
+/^\\s*X-Originating-IP:/ IGNORE
+/^\\s*X-Enigmail/ IGNORE
 /^\\s*X-Mailer:/	IGNORE
-/^\\s*Mime-Version:/	IGNORE
-/^\\s*User-Agent:/	IGNORE
+/^\\s*User-Agent:/ IGNORE
+PASTECONFIGURATIONFILE
+cat > /etc/postfix/check_recipient_access << PASTECONFIGURATIONFILE
+foo@bar.com 550 Does not exist.
+qoo@bar.com REJECT
+PASTECONFIGURATIONFILE
+cat > /etc/postfix/check_sender_access << PASTECONFIGURATIONFILE
+importantcompany.com OK
+spammer.cn REJECT
 PASTECONFIGURATIONFILE
 cat > /etc/logrotate.d/dovecot << PASTECONFIGURATIONFILE
 /var/log/dovecot
@@ -486,15 +538,17 @@ chmod +x /usr/local/sbin/deldovecotuser
 
 openssl dhparam -out /etc/postfix/dhparams.pem 2048
 
+postconf -e "alias_maps = hash:/etc/aliases" # fix NIS warning as default config is "alias_maps = hash:/etc/aliases, nis:mail.aliases"
+
 firewall-cmd --permanent --add-service=smtp
 firewall-cmd --permanent --add-port=465/tcp
 firewall-cmd --permanent --add-service=pop3
 
-# rate limit tcp connections to pop3s on 995/tcp to 3 per minute
+# rate limit tcp connections to pop3s on 995/tcp to 8 / minute per IP
 firewall-cmd --permanent --direct --add-rule ipv4 filter INPUT_direct 10 -p tcp --dport 995 -m state --state NEW -m recent --set --name POP3S_RATELIMIT
-firewall-cmd --permanent --direct --add-rule ipv4 filter INPUT_direct 11 -p tcp --dport 995 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset --name POP3S_RATELIMIT
+firewall-cmd --permanent --direct --add-rule ipv4 filter INPUT_direct 11 -p tcp --dport 995 -m state --state NEW -m recent --update --seconds 60 --hitcount 9 -j REJECT --reject-with tcp-reset --name POP3S_RATELIMIT
 firewall-cmd --permanent --direct --add-rule ipv6 filter INPUT_direct 10 -p tcp --dport 995 -m state --state NEW -m recent --set --name POP3S_RATELIMIT
-firewall-cmd --permanent --direct --add-rule ipv6 filter INPUT_direct 11 -p tcp --dport 995 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset --name POP3S_RATELIMIT
+firewall-cmd --permanent --direct --add-rule ipv6 filter INPUT_direct 11 -p tcp --dport 995 -m state --state NEW -m recent --update --seconds 60 --hitcount 9 -j REJECT --reject-with tcp-reset --name POP3S_RATELIMIT
 
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]

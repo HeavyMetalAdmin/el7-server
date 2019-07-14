@@ -1,1 +1,3 @@
-info@example.com	example.com/info/
+info@example.com example.com/info/
+catchall@example.com example.com/catchall/
+@example.com example.com/catchall/

@@ -15,15 +15,17 @@ chmod +x /usr/local/sbin/deldovecotuser
 
 openssl dhparam -out /etc/postfix/dhparams.pem 2048
 
+postconf -e "alias_maps = hash:/etc/aliases" # fix NIS warning as default config is "alias_maps = hash:/etc/aliases, nis:mail.aliases"
+
 firewall-cmd --permanent --add-service=smtp
 firewall-cmd --permanent --add-port=465/tcp
 firewall-cmd --permanent --add-service=pop3
 
-# rate limit tcp connections to pop3s on 995/tcp to 3 per minute
+# rate limit tcp connections to pop3s on 995/tcp to 8 / minute per IP
 firewall-cmd --permanent --direct --add-rule ipv4 filter INPUT_direct 10 -p tcp --dport 995 -m state --state NEW -m recent --set --name POP3S_RATELIMIT
-firewall-cmd --permanent --direct --add-rule ipv4 filter INPUT_direct 11 -p tcp --dport 995 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset --name POP3S_RATELIMIT
+firewall-cmd --permanent --direct --add-rule ipv4 filter INPUT_direct 11 -p tcp --dport 995 -m state --state NEW -m recent --update --seconds 60 --hitcount 9 -j REJECT --reject-with tcp-reset --name POP3S_RATELIMIT
 firewall-cmd --permanent --direct --add-rule ipv6 filter INPUT_direct 10 -p tcp --dport 995 -m state --state NEW -m recent --set --name POP3S_RATELIMIT
-firewall-cmd --permanent --direct --add-rule ipv6 filter INPUT_direct 11 -p tcp --dport 995 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j REJECT --reject-with tcp-reset --name POP3S_RATELIMIT
+firewall-cmd --permanent --direct --add-rule ipv6 filter INPUT_direct 11 -p tcp --dport 995 -m state --state NEW -m recent --update --seconds 60 --hitcount 9 -j REJECT --reject-with tcp-reset --name POP3S_RATELIMIT
 
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]
