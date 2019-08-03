@@ -81,8 +81,8 @@ ns2	IN A 2.2.2.2
 @	IN CAA 128 issue "letsencrypt.org"
 
 @	IN MX 1 mx.example.com.
-@	IN TXT "v=spf1 mx ip4:4.4.4.4 ip6:0:0:0:0:0:ffff:404:404 -all"
-_dmarc	IN TXT "v=DMARC1;p=none;pct=100;ri=600;rua=mailto:dmarc-bie4YeeNeithoxuu@example.com"
+@	IN TXT "v=spf1 mx -all"
+_dmarc  IN TXT "v=DMARC1; p=reject; rua=mailto:dmarc-asjhgoeahfgsdf@example.com; ruf=mailto:dmarc-asfjsafjsadf@example.comi; fo=1:d:s"
 
 @	IN A 3.3.3.3
 mx	IN A 4.4.4.4
@@ -102,11 +102,10 @@ zone="\${1}"
 cd /var/named/
 dnssec-keygen -r /dev/urandom -a NSEC3RSASHA1 -b 2048 -n ZONE \${zone}
 dnssec-keygen -r /dev/urandom -f KSK -a NSEC3RSASHA1 -b 4096 -n ZONE \${zone}
-dnssec-signzone -t -S -A -3 \$(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -o "\${zone}" "\${zone}"
-echo "*********************************************"
-echo "* The following goes into your parent zone: *"
-echo "*********************************************"
-cat "dsset-\${zone}."
+echo
+echo "**************************************************************"
+echo "* Now use /usr/local/sbin/el7-dnssec-sign to sign your zone! *"
+echo "**************************************************************"
 
 PASTECONFIGURATIONFILE
 cat > /usr/local/sbin/el7-dnssec_sign << PASTECONFIGURATIONFILE
@@ -120,7 +119,7 @@ if [ \$# -eq 0 ]; then
 fi
 zone="\${1}"
 cd /var/named/
-dnssec-signzone -t -S -A -3 \$(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -e +31536000 -o "\${zone}" "\${zone}"
+dnssec-signzone -t -S -A -3 \$(head -c 1000 /dev/urandom | sha1sum | cut -b 1-16) -e +7776000 -o "\${zone}" "\${zone}"
 echo "*********************************************"
 echo "* The following goes into your parent zone: *"
 echo "*********************************************"
@@ -128,6 +127,8 @@ cat "dsset-\${zone}."
 
 PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
+# make el7- scripts executable
+chmod u+x /usr/local/sbin/el7-*
 chown named:named -R /var/named
 firewall-cmd --permanent --add-service=dns
 firewall-cmd --reload

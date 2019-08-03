@@ -1,5 +1,5 @@
 #!/bin/bash
-yum -y install epel-release
+yum -y install epel-release openssl
 yum -y install httpd python-certbot-apache mod_ssl mod_security
 rm -rf /etc/httpd/conf/*
 rm -rf /etc/httpd/conf.d/*
@@ -1014,6 +1014,10 @@ domain=\${1}
 certbot certonly -n --webroot -w "/var/www/html/\${domain}" -d "\${domain}" --register-unsafely-without-email --rsa-key-size 4096 --agree-tos
 PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
+
+# make el7- scripts executable
+chmod u+x /usr/local/sbin/el7-*
+
 mkdir -p /etc/httpd/ssl/
 openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout /etc/httpd/ssl/snakeoil.key -out /etc/httpd/ssl/snakeoil.crt -subj "/C=XX/L= /O= "
 mkdir -p /root/.config/letsencrypt/

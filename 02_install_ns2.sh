@@ -59,6 +59,8 @@ zone "example.com" IN {
 
 PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
+# make el7- scripts executable
+chmod u+x /usr/local/sbin/el7-*
 chown named:named -R /var/named
 firewall-cmd --permanent --add-service=dns
 firewall-cmd --reload

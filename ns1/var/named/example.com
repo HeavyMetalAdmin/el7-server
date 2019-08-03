@@ -16,8 +16,8 @@ ns2	IN A 2.2.2.2
 @	IN CAA 128 issue "letsencrypt.org"
 
 @	IN MX 1 mx.example.com.
-@	IN TXT "v=spf1 mx ip4:4.4.4.4 ip6:0:0:0:0:0:ffff:404:404 -all"
-_dmarc	IN TXT "v=DMARC1;p=none;pct=100;ri=600;rua=mailto:dmarc-bie4YeeNeithoxuu@example.com"
+@	IN TXT "v=spf1 mx -all"
+_dmarc  IN TXT "v=DMARC1; p=reject; rua=mailto:dmarc-asjhgoeahfgsdf@example.com; ruf=mailto:dmarc-asfjsafjsadf@example.comi; fo=1:d:s"
 
 @	IN A 3.3.3.3
 mx	IN A 4.4.4.4

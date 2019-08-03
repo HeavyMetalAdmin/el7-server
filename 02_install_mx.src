@@ -1,9 +1,16 @@
 #!/bin/bash
-yum -y install epel-release
-yum -y install postfix dovecot postfix-pcre opendkim
+yum -y install epel-release openssl
+yum -y install postfix dovecot postfix-pcre opendkim # opendmarc 
 rm -rf /etc/dovecot/conf.d
 
+# SPF ... this is a bit ugly
+yum -y install python34 python34-pip
+pip3.4 install -U pypolicyd-spf pyspf py3dns pip
+
 # COPY CONFIGURATION FILES
+
+# make el7- scripts executable
+chmod u+x /usr/local/sbin/el7-*
 
 alternatives --set mta /usr/sbin/sendmail.postfix
 sudo groupadd -g 5000 vmail
@@ -15,12 +22,13 @@ chmod +x /usr/local/sbin/adddovecotuser
 chmod +x /usr/local/sbin/deldovecotuser
 
 openssl dhparam -out /etc/postfix/dhparams.pem 2048
+openssl dhparam -out /etc/dovecot/dhparams.pem 2048
 
 postconf -e "alias_maps = hash:/etc/aliases" # fix NIS warning as default config is "alias_maps = hash:/etc/aliases, nis:mail.aliases"
 
 firewall-cmd --permanent --add-service=smtp
 firewall-cmd --permanent --add-port=465/tcp
-firewall-cmd --permanent --add-service=pop3
+firewall-cmd --permanent --add-service=pop3s
 
 # rate limit tcp connections to pop3s on 995/tcp to 8 / minute per IP
 firewall-cmd --permanent --direct --add-rule ipv4 filter INPUT_direct 10 -p tcp --dport 995 -m state --state NEW -m recent --set --name POP3S_RATELIMIT
@@ -31,9 +39,6 @@ firewall-cmd --permanent --direct --add-rule ipv6 filter INPUT_direct 11 -p tcp 
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]
 firewall-cmd --direct --get-all-rules # list rate limiting rules [optional]
-systemctl start saslauthd
-systemctl enable saslauthd
-systemctl status saslauthd
 systemctl start dovecot
 systemctl enable dovecot
 systemctl status dovecot

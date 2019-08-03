@@ -5,6 +5,8 @@ yum -y install bind bind-utils #haveged
 # cat /dev/random | rngtest -c 1000
 # systemctl enable haveged
 # COPY CONFIGURATION FILES
+# make el7- scripts executable
+chmod u+x /usr/local/sbin/el7-*
 chown named:named -R /var/named
 firewall-cmd --permanent --add-service=dns
 firewall-cmd --reload

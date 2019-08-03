@@ -1,5 +1,5 @@
 #!/bin/bash
-yum -y install deltarpm coreutils
+yum -y install deltarpm coreutils net-tools
 
 # update
 yum -y update
@@ -9,7 +9,7 @@ yum -y install kernel
 grub2-mkconfig --output=/boot/grub2/grub.cfg
 
 # remove provider monitoring, setup and "backdoor" stuff
-yum -y remove cloud-init
+yum -y remove cloud-init vzdummy-systemd-el7.noarch
 # ovh
 sed '/^[^#]/ s_\(^.*/usr/local/rtm/bin/rtm.*$\)_#\1_g' -i /etc/crontab
 killall -9 rtm
@@ -20,25 +20,35 @@ systemctl start chronyd
 systemctl enable chronyd 
 systemctl status chronyd # chech status [optional] 
 timedatectl set-timezone UTC
+# FIX for https://bugzilla.redhat.com/show_bug.cgi?id=1088021
+yum -y install rsyslog
+systemctl stop rsyslog
+rm /var/lib/rsyslog/imjournal.state
+systemctl start rsyslog
+systemctl enable rsyslog
 
 # auto updates
-yum install -y yum-cron
+yum install -y yum-cron cronie
 sed 's/apply_updates = no/apply_updates = yes/' -i /etc/yum/yum-cron.conf
+systemctl start crond
+systemctl enable crond
+systemctl status crond
 systemctl start yum-cron.service
 systemctl enable yum-cron.service
 systemctl status yum-cron.service # check status [optional]
 #journalctl -xn # in case something went wrong
 
 # automatic reboots if libraries or kernel updated
+yum install -y yum-utils # for needs-restarting
 echo '#!/bin/bash' > /etc/cron.hourly/9needs-restarting.cron
-echo "needs-restarting -r || shutdown -r" >> /etc/cron.hourly/9needs-restarting.cron
+echo "needs-restarting -r > /dev/null || (echo $(hostname): Rebooting; shutdown -r)" >> /etc/cron.hourly/9needs-restarting.cron
 chmod +x /etc/cron.hourly/9needs-restarting.cron
-
 
 # ssh and firewall
 
 ## firewall
 yum -y install firewalld
+systemctl restart dbus # FIX: ERROR: Exception DBusException: org.freedesktop.DBus.Error.AccessDenied: Connection ":1.44" is not allowed to own the service "org.fedoraproject.FirewallD1" due to security policies in the configuration file
 systemctl start firewalld
 systemctl enable firewalld
 systemctl status firewalld
@@ -134,6 +144,9 @@ firewall-cmd --reload
 PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
 
+# make el7- scripts executable
+chmod u+x /usr/local/sbin/el7-*
+
 firewall-cmd --permanent --add-port=226/tcp --zone=public
 semanage port -a -t ssh_port_t -p tcp 226
 
@@ -149,3 +162,5 @@ systemctl status sshd # check status [optional]
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]
 firewall-cmd --direct --get-all-rules # list rate limiting rules [optional]
+
+

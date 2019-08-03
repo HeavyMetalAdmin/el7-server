@@ -9,7 +9,7 @@ Tested on/with:
 - Kimsufi Server
 - EDIS KVM
 - Hetzner Cloud Servers
-
+- VPSCHEAP NET
 
 ## (Re-)Generate the scripts
 
@@ -26,28 +26,47 @@ to at least install 01* script before installing any 02* script.
 Either run directly on server as `./02_install_http.sh` or run remotely
 via SSH as `cat 02_install_http.sh | ssh root@yourserver`
 
+**Note:** In the examples `example.com` and `192.168.42.42` are your servers
+domain and/or IP.
 
 ### 01_install_base.sh
 
-**NOTE:** Please generate a suitable SSH key and copy it onto the machine via:
+This sets up auto-updates and private key only SSH login over an alternate SSH port
+(to keep the logs clean and not have your SSH listed on Shodan.)
+
+**NOTE:** Please follow these instructions closely, otherwise you may lock
+yourself out of your server!
+
+1. Generate a suitable SSH key and copy it onto the machine via:
 
 ```
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_hostname
-ssh root@192.168.56.102 'mkdir ~/.ssh/'
-scp ~/.ssh/id_ed25519_hostname.pub root@192.168.56.102:~/.ssh/authorized_keys
+ssh root@192.168.42.42 'mkdir ~/.ssh/'
+scp ~/.ssh/id_ed25519_hostname.pub root@192.168.42.42:~/.ssh/authorized_keys
 ```
 
-After the installing the `01_install_base.sh` script you can login via:
+2. Open a SSH connection to the server **and keep it open** and perform the following tasks over different SSH connections (so you can recover in case something fails with the SSH setup).
+
+3. Install `01_install_base.sh` by running (on your local machine):
 
 ```
-ssh root@192.168.56.102 -i ~/.ssh/id_ed25519_hostname -p 226
+cat 01_install_base.sh | ssh root@192.168.42.42
 ```
 
-However, it is recommended you add the following to your `~/.ssh/config`:
+4. After installing the `01_install_base.sh` script login in via:
+
+```
+ssh root@192.168.42.42 -i ~/.ssh/id_ed25519_hostname -p 226
+```
+
+5. If step 4 works you can close the backup SSH connection from step 2.
+
+
+It is recommended you add the following to your `~/.ssh/config`:
 
 ```
 host myhostalias
-	HostName 192.168.56.102
+	HostName 192.168.42.42
 	Port 226
 	IdentityFile ~/.ssh/id_ed25519_hostname
 	User root
@@ -74,7 +93,7 @@ accidentally lock yourself out of your system. Make sure you have placed a
 suitable SSH key (see above) on the machine.
 
 **ADVICE:** It is advised you keep a second SSH connection open to the server
-so you can rescue the setup in case you lock yourself out of the system.
+so you can rescue the setup in case you lock yourself out of the system. Only close this second SSH connection when you can connect to the server via the above provided SSH configuration.
 
 **NOTE:** To remove the rate limiting run:
 ```
@@ -107,11 +126,13 @@ Installs and configures Apache.
 After install edit `/etc/httpd/conf.d/vhost.conf` and add your desired virtual
 hosts where it says `# INSERT VHOSTS HERE` as follows:
 
-1. `Use noSSLVhost example.com` gives you a plain HTTP VHost for domain example.com with its webroot being `/var/www/html/example.com`
+1. `Use noSSLVhost example.com` gives you a plain HTTP VHost for domain example.com with its webroot being `/var/www/html/example.com`.
 
-2. Get a Let's Encrypt certificate for example.com domain via `/usr/local/sbin/el7-letsencrypt_setup example.com`.
+2. To generate the webroot run `cp -R /var/www/html/blank/ /var/www/html/example.com`. This copies a standard `robots.txt` and `index.html` file to the new domain.
 
-3. Change the previous configuration to `Use Vhost example.com`. The domain is now using HTTPS with the configured Let's Encrypt certificate.
+3. Get a Let's Encrypt certificate for example.com domain via `/usr/local/sbin/el7-letsencrypt_setup example.com`.
+
+4. Change the previous configuration to `Use Vhost example.com`. The domain is now using HTTPS with the configured Let's Encrypt certificate.
 
 To get a domain redirection change the configuration in step 3 above to `Use redirVHost example.com example.org` which will redirect example.com to example.org (both using HTTPS!).
 
@@ -163,6 +184,10 @@ This sets up:
 - firewall
 - rate limiting connection attempts to POP3s to 3 / min per IP
 
+#### Setup (THIS MUST BE DONE MANUALLY!)
+
+- In `/etc/dovecot/dovecot.conf` and `/etc/postfix/main.cf` replace `mx.example.com` with your domain name.
+
 #### Add a mail box (user)
 
 ```
@@ -196,6 +221,15 @@ TODO: automate this
 * Rate limiting: http://www.postfix.org/TUNING_README.html#conn_limit
 * Backup MX: https://www.howtoforge.com/postfix_backup_mx
 * Squirrelmail (as a separate script)
+* Whitelists: https://www.howtoforge.com/how-to-whitelist-hosts-ip-addresses-in-postfix
+* NS add: `_adsp._domainkey IN TXT "dkim=all"`
+
+Make these work:
+
+- Set the recipient whitelist (these addresses will always receive mail regardless of RBL status) in `/etc/postfix/check_recipient_access`
+- Set the sender whitelist (email from these addresses will always be delivered regardless of sender domain, etc.) in `/etc/postfix/check_sender_access`
+
+- Make work with `/etc/selinux/config`: `SELINUX=enforcing`
 
 ### 03_install_php.sh (PHP)
 
@@ -213,6 +247,45 @@ Requires: `02_install_http.sh`
 #### TODO
 
 * Cleanup, document and release script
+
+## Trouble shooting
+
+### rsyslog
+
+- If you changed the timezone and `journalctl` receives logs, e.g. `journalctl -u postfix`, but `rsyslog` doesn't anymore, e.g. `/var/log/maillog`, you can try (see <https://bugzilla.redhat.com/show_bug.cgi?id=1088021>):
+
+```
+rm /var/lib/rsyslog/imjournal.state
+systemctl restart rsyslog
+```
+- To test logging you can issue log events, e.g. into log `mail.info` via: `logger -p mail.info Testing`
+
+### yum
+
+If yum stops working try:
+
+```
+package-cleanup --dupes
+package-cleanup --cleandupes
+yum clean all
+yum check
+```
+or
+```
+yum-complete-transaction
+yum-complete-transaction --cleanup-only
+yum clean all
+yum check
+```
+
+## Future proofing 
+
+- Periodically run and adapt accordingly:
+	- testssl
+	- <https://ssllabs.com/>
+	- <https://mxtoolbox.com/domain/example.com>
+- Keep up with:
+	- <https://cipherli.st/>
 
 ## Key integrity
 
@@ -238,5 +311,4 @@ pub  1024D/0x54422A4B98AB5139 2010-05-18 Oracle Corporation (VirtualBox archive 
       Key fingerprint = 7B0F AB3A 13B9 0743 5925  D9C9 5442 2A4B 98AB 5139
 sub  2048g/0xB6748A65281DDC4B 2010-05-18
 ```
-
 
