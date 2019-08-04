@@ -255,10 +255,20 @@ Requires: `02_install_http.sh`
 - If you changed the timezone and `journalctl` receives logs, e.g. `journalctl -u postfix`, but `rsyslog` doesn't anymore, e.g. `/var/log/maillog`, you can try (see <https://bugzilla.redhat.com/show_bug.cgi?id=1088021>):
 
 ```
-rm /var/lib/rsyslog/imjournal.state
+rm -f /var/lib/rsyslog/imjournal.state
 systemctl restart rsyslog
 ```
 - To test logging you can issue log events, e.g. into log `mail.info` via: `logger -p mail.info Testing`
+
+### journal
+
+If you don't have logs and also the journal stopped working try:
+
+```
+rm -rf /var/log/journal/*
+reboot
+```
+
 
 ### yum
 

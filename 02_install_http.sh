@@ -1035,7 +1035,4 @@ systemctl status httpd
 mkdir -p /root/.config/letsencrypt/
 echo "rsa-key-size = 4096" > /root/.config/letsencrypt/cli.ini
 echo "$(expr $RANDOM \% 60) 0,12 * * * root perl -e 'sleep int(rand(3600))'; certbot renew --post-hook 'systemctl reload httpd'" > /etc/cron.d/certbot
-## TO GET A LETS ENCRYPT CERTIFICATE FOR example.com RUN:
-#certbot certonly -n --webroot -w /var/www/html/example.com -d example.com --register-unsafely-without-email --rsa-key-size 4096 --agree-tos
-## THEN
-#systemctl reload httpd
+
