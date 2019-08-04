@@ -49,7 +49,8 @@ chmod 700 /home/vmail/\$domain
 
 echo "Adding user to /etc/postfix/vmaps"
 echo "\${1}  \$domain/\$username/" >> /etc/postfix/vmaps
-sort -u /etc/postfix/vmaps -o /etc/postfix/vmaps # remove dups
+# sort in reverse order to not have catch all @example.com lines before user@example.com
+sort -ru /etc/postfix/vmaps -o /etc/postfix/vmaps # remove dups
 postmap /etc/postfix/vmaps
 postfix reload
 
@@ -251,7 +252,7 @@ biff = no
 # stuff
 myhostname = mx.example.com
 myorigin = \$myhostname
-#mydestination = mx.example.com, example.com, localhost, localhost.localdomain
+#mydestination = localhost, localhost.localdomain
 relayhost =
 mynetworks = 127.0.0.0/8
 mailbox_size_limit = 0
@@ -302,14 +303,14 @@ smtpd_delay_reject = yes
 smtpd_relay_restrictions =
 	permit_mynetworks,
 	permit_sasl_authenticated,
-	reject_unauth_destination,
+	defer_unauth_destination
 smtpd_client_restrictions =
 	permit_mynetworks,
 	permit_sasl_authenticated,
 	check_policy_service unix:private/policyd-spf,
-#	check_client_access hash:/etc/postfix/check_client_access,
-#	check_sender_access hash:/etc/postfix/check_sender_access,
-#	check_recipient_access hash:/etc/postfix/check_recipient_access,
+#       check_client_access hash:/etc/postfix/check_client_access,
+#       check_sender_access hash:/etc/postfix/check_sender_access,
+#       check_recipient_access hash:/etc/postfix/check_recipient_access,
 	reject_rbl_client zen.spamhaus.org,
 	permit
 smtpd_helo_restrictions =
@@ -321,8 +322,11 @@ smtpd_helo_restrictions =
 	permit
 smtpd_sender_restrictions =
 	permit_mynetworks,
+# reject_known_sender_login_mismatch is only available in >= 2.11
+#	reject_known_sender_login_mismatch
+	reject_authenticated_sender_login_mismatch,
 	permit_sasl_authenticated,
-#	check_sender_access hash:/etc/postfix/check_sender_access,
+#       check_sender_access hash:/etc/postfix/check_sender_access,
 	reject_non_fqdn_sender,
 	reject_unknown_sender_domain,
 	reject_unlisted_sender,
@@ -331,7 +335,7 @@ smtpd_recipient_restrictions =
 	permit_mynetworks,
 	permit_sasl_authenticated,
 	reject_unauth_destination,
-#	check_recipient_access hash:/etc/postfix/check_recipient_access,
+#       check_recipient_access hash:/etc/postfix/check_recipient_access,
 	reject_invalid_hostname,
 	reject_non_fqdn_hostname,
 	reject_non_fqdn_sender,
@@ -340,6 +344,9 @@ smtpd_recipient_restrictions =
 	reject_unknown_recipient_domain,
 	reject_unknown_sender_domain,
 	permit
+
+# prevent non email owner to send under that email address
+smtpd_sender_login_maps=regexp:/etc/postfix/smtpd_sender_login_maps.regexp
 
 # SASL
 # if you really want noplaintext you need to remove plain and login in /etc/dovecot/dovecot.conf auth_mechansims
@@ -365,7 +372,7 @@ smtp_tls_mandatory_protocols = !SSLv2, !SSLv3
 # hence we don't verify :(
 smtp_tls_security_level = encrypt
 # clean private stuff from headers
-smtp_header_checks = regexp:/etc/postfix/smtp_header_checks
+smtp_header_checks = regexp:/etc/postfix/smtp_header_checks.regexp
 
 # Slowing down SMTP clients that make many errors
 smtpd_error_sleep_time = 1s
@@ -396,7 +403,6 @@ non_smtpd_milters = inet:localhost:8891
 # TODO: DMARC
 
 alias_maps = hash:/etc/aliases
-
 
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/vhosts << PASTECONFIGURATIONFILE
@@ -533,14 +539,19 @@ scache    unix  -       -       n       -       1       scache
 #  flags=FR user=list argv=/usr/lib/mailman/bin/postfix-to-mailman.py
 #  \${nexthop} \${user}
 policyd-spf unix - n n - 0 spawn user=nobody argv=/usr/bin/policyd-spf
-
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/vmaps << PASTECONFIGURATIONFILE
-info@example.com example.com/info/
-catchall@example.com example.com/catchall/
-@example.com example.com/catchall/
+user@example.com	example.com/user/
+# catch all mail to @example.com to user@example.com
+@example.com	example.com/user/
 PASTECONFIGURATIONFILE
-cat > /etc/postfix/smtp_header_checks << PASTECONFIGURATIONFILE
+cat > /etc/postfix/smtpd_sender_login_maps.regexp << PASTECONFIGURATIONFILE
+# allow account user@example.com to spoof for the whole example.com domain
+/^(.*)@example.com\$/	user@example.com
+# only allow exact SASL login name matches
+/^(.*)\$/	\${1}
+PASTECONFIGURATIONFILE
+cat > /etc/postfix/smtp_header_checks.regexp << PASTECONFIGURATIONFILE
 /^\\s*Received:.*with ESMTPSA/ IGNORE
 /^\\s*X-Originating-IP:/ IGNORE
 /^\\s*X-Enigmail/ IGNORE
