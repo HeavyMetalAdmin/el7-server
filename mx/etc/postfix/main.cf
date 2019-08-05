@@ -133,11 +133,11 @@ smtpd_hard_error_limit = 10
 smtpd_junk_command_limit = 3
 # Measures against clients that make too many connections
 anvil_rate_time_unit = 60s
-smtpd_client_connection_count_limit = 3
-smtpd_client_connection_rate_limit = 6
-smtpd_client_message_rate_limit = 10
+smtpd_client_connection_count_limit = 30
+smtpd_client_connection_rate_limit = 60
+smtpd_client_message_rate_limit = 60
 # we only have around 3 legit recipients
-smtpd_client_recipient_rate_limit = 5
+smtpd_client_recipient_rate_limit = 30
 # prevent brute forcing
 # only available in postfix > 3.1
 #smtpd_client_auth_rate_limit = 6

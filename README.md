@@ -11,12 +11,26 @@ Tested on/with:
 - Hetzner Cloud Servers
 - VPSCHEAP NET
 
+## Base install
+
+1. `WELCOME TO CENTOS 7`: `English > English (United States)` -> `Continue`
+2. `INSTALLATION SUMMARY`:
+	1. `NETWORK & HOST NAME`: 1. `ON`; 2. `Configure...`, `General`, `[X] Automatically connect to this network`; 3. `Host name:` "example.com"; 4. `DONE`
+	2. `DATE & TIME`: 1. `Network Time` = `ON`; 3. `DONE`
+	3. `INSTALLATION SOURCE`: 1. `On the network:` "http://mirror.centos.org/centos/7/os/x86_64/; 2. `DONE`
+	4. `INSTALLATION DESTINATION`: 1. `I will configure partitioning.`; 2. `DONE`; 3. `Standard Partition`; 4. `-`; 5. `+`; 6. `ADD A NEW MOUNT POINT`, "swap", "2GiB" (depending on your needs); 7. `+`; 8. `ADD A NEW MOUNT POINT`, "/", (leave blank to allocate the rest); 9. `DONE`; 10. `Accept Changes`
+	5. `SOFTWARE SELECTION`: 1. `Minimal Install`; 2. `DONE`
+	6. `KDUMP`: 1. `[ ] Enable kdump`; 2. `DONE`
+	7. `Begin Installation`
+	8. `ROOT PASSWORD`: 1. Set password; 2. `DONE`
+	9. Wait for installation to finish.
+	10. `Reboot`
+
 ## (Re-)Generate the scripts
 
 ```
 ./00_generate_all.sh
 ```
-
 
 ## The scripts
 
@@ -106,7 +120,7 @@ firewall-cmd --reload
 
 **NOTE:** To see the recent list of IP addresses of this SSH rate-limiting rule run:
 ```bash
-cat /proc/net/ipt_recent/SSH_RATELIMIT
+cat /proc/net/xt_recent/SSH_RATELIMIT
 ```
 
 **NOTE:** To see possible active rate limiting rules run:
@@ -114,6 +128,7 @@ cat /proc/net/ipt_recent/SSH_RATELIMIT
 ```bash
 firewall-cmd --direct --get-all-rules
 ```
+
 #### TODOs
 
 * Setup knockd: https://www.digitalocean.com/community/tutorials/how-to-use-port-knocking-to-hide-your-ssh-daemon-from-attackers-on-ubuntu
@@ -217,19 +232,21 @@ TODO: automate this
 
 #### TODOs
 
-* Spamassassin: https://www.akadia.com/services/postfix_spamassassin.html
-* Rate limiting: http://www.postfix.org/TUNING_README.html#conn_limit
-* Backup MX: https://www.howtoforge.com/postfix_backup_mx
-* Squirrelmail (as a separate script)
-* Whitelists: https://www.howtoforge.com/how-to-whitelist-hosts-ip-addresses-in-postfix
-* NS add: `_adsp._domainkey IN TXT "dkim=all"`
-
 Make these work:
 
 - Set the recipient whitelist (these addresses will always receive mail regardless of RBL status) in `/etc/postfix/check_recipient_access`
 - Set the sender whitelist (email from these addresses will always be delivered regardless of sender domain, etc.) in `/etc/postfix/check_sender_access`
 
+- Whitelists: https://www.howtoforge.com/how-to-whitelist-hosts-ip-addresses-in-postfix
+
+- Rate limiting: http://www.postfix.org/TUNING_README.html#conn_limit
+- Backup MX: https://www.howtoforge.com/postfix_backup_mx
+- Squirrelmail (as a separate script)
+- NS add: `_adsp._domainkey IN TXT "dkim=all"`
+- `smtp_check_headers` doesn't clean private stuff when sending from one local email to another local email account :/
+
 - Make work with `/etc/selinux/config`: `SELINUX=enforcing`
+- Spamassassin: https://www.akadia.com/services/postfix_spamassassin.html
 
 ### 03_install_php.sh (PHP)
 
@@ -269,7 +286,6 @@ rm -rf /var/log/journal/*
 reboot
 ```
 
-
 ### yum
 
 If yum stops working try:
@@ -291,7 +307,8 @@ yum check
 ## Future proofing 
 
 - Periodically run and adapt accordingly:
-	- testssl
+	- `testssl`
+	- <https://internet.nl/>
 	- <https://ssllabs.com/>
 	- <https://mxtoolbox.com/domain/example.com>
 - Keep up with:

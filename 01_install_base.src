@@ -41,7 +41,7 @@ systemctl status yum-cron.service # check status [optional]
 # automatic reboots if libraries or kernel updated
 yum install -y yum-utils # for needs-restarting
 echo '#!/bin/bash' > /etc/cron.hourly/9needs-restarting.cron
-echo "needs-restarting -r > /dev/null || (echo $(hostname): Rebooting; shutdown -r)" >> /etc/cron.hourly/9needs-restarting.cron
+echo "needs-restarting -r > /dev/null || shutdown -r" >> /etc/cron.hourly/9needs-restarting.cron
 chmod +x /etc/cron.hourly/9needs-restarting.cron
 
 # ssh and firewall
@@ -81,4 +81,5 @@ firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]
 firewall-cmd --direct --get-all-rules # list rate limiting rules [optional]
 
+hostnamectl set-hostname localhost.localdomain
 
