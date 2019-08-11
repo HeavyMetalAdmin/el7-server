@@ -21,7 +21,7 @@ ns2	IN AAAA 0:0:0:0:0:ffff:404:404
 @	IN TXT "v=spf1 mx -all"
 _dmarc  IN TXT "v=DMARC1; p=reject; rua=mailto:dmarc-asjhgoeahfgsdf@example.com; ruf=mailto:dmarc-asfjsafjsadf@example.comi; fo=1:d:s"
 
-*._report._dmarc IN TXT "v=DMARC1"
+*._report._dmarc IN TXT "v=DMARC1;"
 
 @	IN A 3.3.3.3
 @	IN AAAA 0:0:0:0:0:ffff:404:404

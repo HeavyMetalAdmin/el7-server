@@ -96,7 +96,7 @@ ssh myhostalias
 The `01_install_base.sh` installs and configures:
 
 - Standard kernel (to ensure security updates) 
-- Time
+- Time (UTC all the way!)
 - Auto updates with auto reboots on library and kernel updates
 - SSH (pubkey only, ed25519 only, and port 226 (for additional security))
 - firewall
@@ -129,6 +129,12 @@ cat /proc/net/xt_recent/SSH_RATELIMIT
 firewall-cmd --direct --get-all-rules
 ```
 
+#### Logging
+
+- SSH: `cat /var/log/secure | grep sshd` (see ssh login attempts, etc.)
+- yum: `/var/log/yum.log` (displays the last updated packages)
+- cron: `/var/log/cron` (should contain hourly entries of `starting 0yum-hourly.cron` and `starting 9needs-restarting.cron`)
+
 #### TODOs
 
 * Setup knockd: https://www.digitalocean.com/community/tutorials/how-to-use-port-knocking-to-hide-your-ssh-daemon-from-attackers-on-ubuntu
@@ -142,11 +148,8 @@ After install edit `/etc/httpd/conf.d/vhost.conf` and add your desired virtual
 hosts where it says `# INSERT VHOSTS HERE` as follows:
 
 1. `Use noSSLVhost example.com` gives you a plain HTTP VHost for domain example.com with its webroot being `/var/www/html/example.com`.
-
 2. To generate the webroot run `cp -R /var/www/html/blank/ /var/www/html/example.com`. This copies a standard `robots.txt` and `index.html` file to the new domain.
-
 3. Get a Let's Encrypt certificate for example.com domain via `/usr/local/sbin/el7-letsencrypt_setup example.com`.
-
 4. Change the previous configuration to `Use Vhost example.com`. The domain is now using HTTPS with the configured Let's Encrypt certificate.
 
 To get a domain redirection change the configuration in step 3 above to `Use redirVHost example.com example.org` which will redirect example.com to example.org (both using HTTPS!).
@@ -160,14 +163,39 @@ To get a domain redirection change the configuration in step 3 above to `Use red
 /usr/local/sbin/el7-letsencrypt_delete example.com
 ```
 
+#### Logging
+
+- Access logs for domains: `/var/log/http/example.com-access_log`
+- Access logs to accesses directly to the server IP: `/var/log/http/access_log`
+- General log directory: `/var/log/http/*`
+	- Error logs: `example.com-error_log`, `error_log`
+
+#### TODO
+
+- FIXME: Stapling on the IP host with the self signed SSL cert does not work and floods error_log (`ssl_stapling_init_cert: can't retrieve issuer certificate!`)
+
 ### 02_install_ns.sh (BIND name server)
 
 Installs and configures BIND name server.
+
+**NOTE:** In case you only want a local recursive nameserver (e.g. to run RBL DNS queries as  prerequisite to `02_install_mx.sh`) you don't need to do any post install configuration.
+
+In case you want a ns1 (master/primary) and ns2 (slave/secondary) nameserver setup do the following:
+
+1. After install run `/usr/local/sbin/el7-bind_config <IP of ns1> <IP of ns2>` to configure the ns1 and ns2 IPs in `/etc/named.conf`.
+2. Edit `/etc/named/zones` to add your zones.
+3. Edit your zones, for `example.com` the file would be in  `/var/named/example.com` etc.
+4. Optional: Follow DNSSEC setup below
 
 #### DNSSEC
 
 1. To setup DNSSEC for a zone, i.e., generate (or regenerate) keys, etc. run: `/usr/local/sbin/el7-dnssec_setup example.com`
 2. To (re-)sign a zone, run: `/usr/local/sbin/el7-dnssec_sign example.com`
+
+#### Logging
+
+- General log: `/var/log/named/named.log`
+- Query log: `/var/log/named/queries.log`
 
 #### TODOs
 
@@ -189,19 +217,19 @@ systemctl start named
 
 ### 02_install_mx.sh (Postfix + Dovecot mail server)
 
-Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt)
+Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt), **optional** `02_install_ns.sh` (to make Spamhaus RBL DNS queries work)
 
 This sets up:
 
 - SMTP (25/tcp)
 - SMTPs (465/tcp)
 - POP3s (995/tcp)
-- firewall
-- rate limiting connection attempts to POP3s to 3 / min per IP
+- firewall config with rate limiting connection attempts to POP3s to 3 / min per IP
 
-#### Setup (THIS MUST BE DONE MANUALLY!)
+#### Setup
 
-- In `/etc/dovecot/dovecot.conf` and `/etc/postfix/main.cf` replace `mx.example.com` with your domain name.
+1. In `/etc/dovecot/dovecot.conf` and `/etc/postfix/main.cf` replace `mx.example.com` with your domain name.
+2. Get a Let's Encrypt certificate for your mx domain by following the `02_install_http.sh` setup.
 
 #### Add a mail box (user)
 
@@ -209,7 +237,11 @@ This sets up:
 /usr/local/sbin/el7-mx_add_user user@example.com
 ```
 
-This will generate a postfix mailbox as well as a POP3 Dovecot mailbox.
+This will generate a postfix mailbox as well as a POP3 Dovecot mailbox by editing the following files:
+- `/etc/postfix/vhosts
+- `/etc/postfix/vmaps` (and (re-)generating `/etc/postfix/vmaps.db`)
+- `/etc/dovecot/users`
+- `/etc/dovecot/passwd`
 
 Mail user can then use:
 - SMPTs on 465/tcp with (CRAM-MD5) encrypted password and username `user@example.com`.
@@ -223,6 +255,7 @@ Mail user can then use:
 ```
 
 This deletes the postfix and Dovecot mailbox of `user@example.com`.
+**NOTE:** `/etc/postfix/vhosts` will continue to hold the domain and must be removed manually if desired.
 
 #### DKIM
 
@@ -248,22 +281,10 @@ Make these work:
 - Make work with `/etc/selinux/config`: `SELINUX=enforcing`
 - Spamassassin: https://www.akadia.com/services/postfix_spamassassin.html
 
-### 03_install_php.sh (PHP)
+#### Logging
 
-Requires: `02_install_http.sh`
-
-#### TODOs
-
-* Cleanup, document and release script, which is basically just a `yum install php`
-* Stop using PHP
-
-### 03_install_mysql.sh (MySQL / MariaDB)
-
-Requires: `02_install_http.sh`
-
-#### TODO
-
-* Cleanup, document and release script
+- Postfix: `/var/log/maillog`
+- Dovecot: `/var/log/dovecot`, `/var/log/dovecot.info`
 
 ## Trouble shooting
 
@@ -308,8 +329,9 @@ yum check
 
 - Periodically run and adapt accordingly:
 	- `testssl`
-	- <https://internet.nl/>
 	- <https://ssllabs.com/>
+	- <https://securityheaders.com/>
+	- <https://internet.nl/>
 	- <https://mxtoolbox.com/domain/example.com>
 - Keep up with:
 	- <https://cipherli.st/>

@@ -1,0 +1,15 @@
+#!/bin/bash
+if [ $# -ne 2 ]; then
+	echo "Configure BIND ns IPs"
+	echo
+	echo "usage: ${0} <IP of ns1> <IP of ns2>"
+	echo
+	exit 1
+fi
+ns1="${1}"
+ns2="${2}"
+sed '/allow-update/ s/none/'${ns1}'/' -i /etc/named.conf
+sed '/allow-notify/ s/none/'${ns1}'/' -i /etc/named.conf
+sed '/allow-transfer/ s/none/'${ns2}'/' -i /etc/named.conf
+sed '/masters/ s/none/'${ns1}'/' -i /etc/named/zones
+

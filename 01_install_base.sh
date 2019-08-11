@@ -63,6 +63,7 @@ yum -y install policycoreutils-python
 # COPY CONFIGURATION FILES
 mkdir -p /etc
 mkdir -p /etc/ssh
+mkdir -p /etc/yum
 mkdir -p /usr
 mkdir -p /usr/local
 mkdir -p /usr/local/sbin
@@ -99,6 +100,208 @@ UsePrivilegeSeparation sandbox
 
 MaxAuthTries 1
 
+PASTECONFIGURATIONFILE
+cat > /etc/logrotate.conf << PASTECONFIGURATIONFILE
+# see "man logrotate" for details
+# rotate log files weekly
+weekly
+
+# keep 4 weeks worth of backlogs
+rotate 8
+
+# create new (empty) log files after rotating old ones
+create
+
+# use date as a suffix of the rotated file
+dateext
+
+# uncomment this if you want your log files compressed
+#compress
+
+# RPM packages drop log rotation information into this directory
+include /etc/logrotate.d
+
+# no packages own wtmp and btmp -- we'll rotate them here
+/var/log/wtmp {
+    monthly
+    create 0664 root utmp
+	minsize 1M
+    rotate 1
+}
+
+/var/log/btmp {
+    missingok
+    monthly
+    create 0600 root utmp
+    rotate 1
+}
+
+# system-specific logs may be also be configured here.
+PASTECONFIGURATIONFILE
+cat > /etc/yum/yum-cron-hourly.conf << PASTECONFIGURATIONFILE
+[commands]
+#  What kind of update to use:
+# default                            = yum upgrade
+# security                           = yum --security upgrade
+# security-severity:Critical         = yum --sec-severity=Critical upgrade
+# minimal                            = yum --bugfix update-minimal
+# minimal-security                   = yum --security update-minimal
+# minimal-security-severity:Critical =  --sec-severity=Critical update-minimal
+update_cmd = default
+
+# Whether a message should emitted when updates are available.
+update_messages = yes
+
+# Whether updates should be downloaded when they are available. Note
+# that updates_messages must also be yes for updates to be downloaded.
+download_updates = yes
+
+# Whether updates should be applied when they are available.  Note
+# that both update_messages and download_updates must also be yes for
+# the update to be applied
+apply_updates = yes
+
+# Maximum amout of time to randomly sleep, in minutes.  The program
+# will sleep for a random amount of time between 0 and random_sleep
+# minutes before running.  This is useful for e.g. staggering the
+# times that multiple systems will access update servers.  If
+# random_sleep is 0 or negative, the program will run immediately.
+random_sleep = 15
+
+
+[emitters]
+# Name to use for this system in messages that are emitted.  If
+# system_name is None, the hostname will be used.
+system_name = None
+
+# How to send messages.  Valid options are stdio and email.  If
+# emit_via includes stdio, messages will be sent to stdout; this is useful
+# to have cron send the messages.  If emit_via includes email, this
+# program will send email itself according to the configured options.
+# If emit_via is None or left blank, no messages will be sent.
+emit_via = stdio
+
+# The width, in characters, that messages that are emitted should be
+# formatted to.
+output_width = 80
+
+
+[email]
+# The address to send email messages from.
+# NOTE: 'localhost' will be replaced with the value of system_name.
+email_from = root
+
+# List of addresses to send messages to.
+email_to = root
+
+# Name of the host to connect to to send email messages.
+email_host = localhost
+
+
+[groups]
+# List of groups to update
+group_list = None
+
+# The types of group packages to install
+group_package_types = mandatory, default
+
+[base]
+# This section overrides yum.conf
+
+# Use this to filter Yum core messages
+# -4: critical
+# -3: critical+errors
+# -2: critical+errors+warnings (default)
+debuglevel = -2
+
+# skip_broken = True
+mdpolicy = group:main
+
+# Uncomment to auto-import new gpg keys (dangerous)
+# assumeyes = True
+PASTECONFIGURATIONFILE
+cat > /etc/yum/yum-cron.conf << PASTECONFIGURATIONFILE
+[commands]
+#  What kind of update to use:
+# default                            = yum upgrade
+# security                           = yum --security upgrade
+# security-severity:Critical         = yum --sec-severity=Critical upgrade
+# minimal                            = yum --bugfix update-minimal
+# minimal-security                   = yum --security update-minimal
+# minimal-security-severity:Critical =  --sec-severity=Critical update-minimal
+update_cmd = default
+
+# Whether a message should be emitted when updates are available,
+# were downloaded, or applied.
+update_messages = no
+
+# Whether updates should be downloaded when they are available.
+download_updates = no
+
+# Whether updates should be applied when they are available.  Note
+# that download_updates must also be yes for the update to be applied.
+apply_updates = no
+
+# Maximum amout of time to randomly sleep, in minutes.  The program
+# will sleep for a random amount of time between 0 and random_sleep
+# minutes before running.  This is useful for e.g. staggering the
+# times that multiple systems will access update servers.  If
+# random_sleep is 0 or negative, the program will run immediately.
+# 6*60 = 360
+random_sleep = 360
+
+
+[emitters]
+# Name to use for this system in messages that are emitted.  If
+# system_name is None, the hostname will be used.
+system_name = None
+
+# How to send messages.  Valid options are stdio and email.  If
+# emit_via includes stdio, messages will be sent to stdout; this is useful
+# to have cron send the messages.  If emit_via includes email, this
+# program will send email itself according to the configured options.
+# If emit_via is None or left blank, no messages will be sent.
+emit_via = stdio
+
+# The width, in characters, that messages that are emitted should be
+# formatted to.
+output_width = 80
+
+
+[email]
+# The address to send email messages from.
+# NOTE: 'localhost' will be replaced with the value of system_name.
+email_from = root@localhost
+
+# List of addresses to send messages to.
+email_to = root
+
+# Name of the host to connect to to send email messages.
+email_host = localhost
+
+
+[groups]
+# NOTE: This only works when group_command != objects, which is now the default
+# List of groups to update
+group_list = None
+
+# The types of group packages to install
+group_package_types = mandatory, default
+
+[base]
+# This section overrides yum.conf
+
+# Use this to filter Yum core messages
+# -4: critical
+# -3: critical+errors
+# -2: critical+errors+warnings (default)
+debuglevel = -2
+
+# skip_broken = True
+mdpolicy = group:main
+
+# Uncomment to auto-import new gpg keys (dangerous)
+# assumeyes = True
 PASTECONFIGURATIONFILE
 cat > /usr/local/sbin/el7-firewall_remove_whitelist_ssh << PASTECONFIGURATIONFILE
 #!/bin/bash

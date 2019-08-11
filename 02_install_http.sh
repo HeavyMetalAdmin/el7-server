@@ -541,11 +541,12 @@ SSLStaplingStandardCacheTimeout 86400
 # testssl \${domain}
 # curl -v https://\${domain}
 Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" env=HTTPS
-Header always set X-Frame-Options DENY
-Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options "DENY"
+Header always set X-Content-Type-Options "nosniff"
 Header always set Content-Security-Policy "upgrade-insecure-requests;"
 Header always set X-XSS-Protection "1; mode=block"
-Header always set Referrer-Policy no-referrer
+Header always set Feature-Policy "geolocation 'none'; midi 'none'; notifications 'none'; push 'none'; sync-xhr 'none'; microphone 'none'; camera 'none'; magnetometer 'none'; gyroscope 'none'; speaker 'none'; vibrate 'none'; fullscreen 'self'; payment 'none';"
+Header always set Referrer-Policy "no-referrer"
 Header always unset "X-Powered-By"
 Header unset "X-Powered-By"
 Header always unset "Server"
@@ -631,6 +632,7 @@ Header always set X-Frame-Options DENY
 Header always set X-Content-Type-Options nosniff
 Header always set Content-Security-Policy "upgrade-insecure-requests;"
 Header always set X-XSS-Protection "1; mode=block"
+Header always set Feature-Policy "geolocation 'none'; midi 'none'; notifications 'none'; push 'none'; sync-xhr 'none'; microphone 'none'; camera 'none'; magnetometer 'none'; gyroscope 'none'; speaker 'none'; vibrate 'none'; fullscreen 'self'; payment 'none';"
 Header always set Referrer-Policy no-referrer
 Header always unset "X-Powered-By"
 Header unset "X-Powered-By"
@@ -755,6 +757,7 @@ Header always set X-Frame-Options DENY
 Header always set X-Content-Type-Options nosniff
 Header always set Content-Security-Policy "upgrade-insecure-requests;"
 Header always set X-XSS-Protection "1; mode=block"
+Header always set Feature-Policy "geolocation 'none'; midi 'none'; notifications 'none'; push 'none'; sync-xhr 'none'; microphone 'none'; camera 'none'; magnetometer 'none'; gyroscope 'none'; speaker 'none'; vibrate 'none'; fullscreen 'self'; payment 'none';"
 Header always set Referrer-Policy no-referrer
 Header always unset "X-Powered-By"
 Header unset "X-Powered-By"

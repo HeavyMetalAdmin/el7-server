@@ -8,6 +8,8 @@ yum -y install bind bind-utils #haveged
 # make el7- scripts executable
 chmod u+x /usr/local/sbin/el7-*
 chown named:named -R /var/named
+mkdir -p /var/log/named
+chown named:named -R /var/log/named
 firewall-cmd --permanent --add-service=dns
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]

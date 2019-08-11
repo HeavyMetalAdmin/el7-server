@@ -299,6 +299,7 @@ smtpd_tls_mandatory_ciphers=high
 smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3
 smtpd_tls_exclude_ciphers=eNULL:aNULL:LOW:MEDIUM:DES:3DES:RC4:MD5:RSA:SHA1
 smtpd_tls_dh1024_param_file = \${config_directory}/dhparams.pem
+message_size_limit = 20971520
 smtpd_delay_reject = yes
 smtpd_relay_restrictions =
 	permit_mynetworks,
