@@ -7,6 +7,8 @@ rm -rf /etc/dovecot/conf.d
 yum -y install python34 python34-pip
 pip3.4 install -U pypolicyd-spf pyspf py3dns pip
 
+rm -rf /etc/postfix/*
+
 # COPY CONFIGURATION FILES
 mkdir -p /usr
 mkdir -p /usr/local
@@ -161,8 +163,47 @@ echo "/etc/opendkim/SigningTable"
 echo "*@\${domain} \${selector}._domainkey.\${domain}"
 echo
 PASTECONFIGURATIONFILE
-cat > /etc/dovecot/users << PASTECONFIGURATIONFILE
-info@example.com::5000:5000::/home/vmail/example.com/info/:/bin/false::
+cat > /usr/local/sbin/el7-mx_config << PASTECONFIGURATIONFILE
+#!/bin/bash
+if [ \$# -ne 1 ]; then
+	echo "Configure MX server"
+	echo
+	echo "usage: \${0} <mx.example.com>"
+	echo
+	exit 1
+fi
+
+domain="\${1}"
+
+fullchain="/etc/letsencrypt/live/\${domain}/fullchain.pem"
+privkey="/etc/letsencrypt/live/\${domain}/privkey.pem"
+
+if [ ! -f "\${fullchain}" ] || [ ! -f "\${privkey}"]; then
+	echo "WARNING: No Let's Encrypt certificates found! Generating self-signed certs."
+	mkdir -p /etc/pki/selfsigned
+	fullchain="/etc/pki/selfsigned/\${domain}-fullchain.pem"
+	privkey="/etc/pki/selfsigned/\${domain}-privkey.pem"
+	openssl req -newkey rsa:4096 -nodes -sha512 -x509 -days 3650 -nodes -out \${fullchain} -keyout \${privkey} -subj "/C=XX/L= /O= "
+fi
+
+sed 's#^smtpd_tls_cert_file = .*\$#smtpd_tls_cert_file = '"\${fullchain}"'#' -i /etc/postfix/main.cf
+sed 's#^smtpd_tls_key_file = .*\$#smtpd_tls_key_file = '"\${privkey}"'#' -i /etc/postfix/main.cf
+sed 's#^myhostname = .*\$#myhostname = '"\${domain}"'#' -i /etc/postfix/main.cf
+
+sed 's#^	ssl_cert=<.*\$#	ssl_cert=<'"\${fullchain}"'#' -i /etc/dovecot/dovecot.conf
+sed 's#^	ssl_key=<.*\$#	ssl_cert=<'"\${privkey}"'#' -i /etc/dovecot/dovecot.conf
+sed 's#^local_name .* {\$#local_name '"\${domain}"' {#' -i /etc/dovecot/dovecot.conf
+
+systemctl restart dovecot
+systemctl enable dovecot
+#systemctl status dovecot
+systemctl restart postfix
+systemctl enable postfix
+#systemctl status postfix
+
+
+PASTECONFIGURATIONFILE
+base64 -d > /etc/dovecot/users << PASTECONFIGURATIONFILE
 PASTECONFIGURATIONFILE
 cat > /etc/dovecot/dovecot.conf << PASTECONFIGURATIONFILE
 base_dir = /var/run/dovecot/
@@ -247,8 +288,7 @@ ssl_dh_parameters_length = 2048
 
 
 PASTECONFIGURATIONFILE
-cat > /etc/dovecot/passwd << PASTECONFIGURATIONFILE
-info@example.com:{CRAM-MD5}e02d374fde0dc75a17a557039a3a5338c7743304777dccd376f332bee68d2cf6
+base64 -d > /etc/dovecot/passwd << PASTECONFIGURATIONFILE
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/main.cf << PASTECONFIGURATIONFILE
 smtpd_banner = \$myhostname ESMTP
@@ -411,8 +451,7 @@ non_smtpd_milters = inet:localhost:8891,inet:localhost:8893
 alias_maps = hash:/etc/aliases
 
 PASTECONFIGURATIONFILE
-cat > /etc/postfix/vhosts << PASTECONFIGURATIONFILE
-example.com
+base64 -d > /etc/postfix/vhosts << PASTECONFIGURATIONFILE
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/master.cf << PASTECONFIGURATIONFILE
 #
@@ -547,13 +586,11 @@ scache    unix  -       -       n       -       1       scache
 policyd-spf unix - n n - 0 spawn user=nobody argv=/usr/bin/policyd-spf
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/vmaps << PASTECONFIGURATIONFILE
-user@example.com	example.com/user/
 # catch all mail to @example.com to user@example.com
-@example.com	example.com/user/
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/smtpd_sender_login_maps.regexp << PASTECONFIGURATIONFILE
 # allow account user@example.com to spoof for the whole example.com domain
-/^(.*)@example.com\$/	user@example.com
+#/^(.*)@example.com\$/	user@example.com
 # only allow exact SASL login name matches
 /^(.*)\$/	\${1}
 PASTECONFIGURATIONFILE
@@ -1032,8 +1069,8 @@ PASTECONFIGURATIONFILE
 chmod u+x /usr/local/sbin/el7-*
 
 alternatives --set mta /usr/sbin/sendmail.postfix
-sudo groupadd -g 5000 vmail
-sudo useradd -m -u 5000 -g 5000 -s /bin/bash vmail
+groupadd -g 5000 vmail
+useradd -m -d /var/vmail -s /bin/false -u 5000 -g vmail vmail
 postmap /etc/postfix/vmaps
 postmap /etc/postfix/smtp_header_checks
 
@@ -1063,16 +1100,10 @@ firewall-cmd --permanent --direct --add-rule ipv6 filter INPUT_direct 11 -p tcp 
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]
 firewall-cmd --direct --get-all-rules # list rate limiting rules [optional]
-systemctl start dovecot
-systemctl enable dovecot
-systemctl status dovecot
 systemctl start opendkim
 systemctl enable opendkim
 systemctl status opendkim
 systemctl start opendmarc
 systemctl enable opendmarc
 systemctl status opendmarc
-systemctl start postfix
-systemctl enable postfix
-systemctl status postfix # check status [optional]
 

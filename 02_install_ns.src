@@ -10,9 +10,6 @@ chmod u+x /usr/local/sbin/el7-*
 chown named:named -R /var/named
 mkdir -p /var/log/named
 chown named:named -R /var/log/named
-firewall-cmd --permanent --add-service=dns
-firewall-cmd --reload
-firewall-cmd --list-all # list rules [optional]
 systemctl start named
 systemctl enable named
 systemctl status named # check status [optional]

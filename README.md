@@ -221,7 +221,7 @@ systemctl start named
 
 ### 02_install_mx.sh (Postfix + Dovecot mail server)
 
-Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt), **optional** `02_install_ns.sh` (to make Spamhaus RBL DNS queries work)
+Requires: `02_install_http.sh` (to acquire certificate from Let's Encrypt), **optional** `02_install_ns1.sh` (**without** running `/usr/local/sbin/el7-bind_config` to make Spamhaus RBL DNS queries work)
 
 This sets up:
 
@@ -232,8 +232,8 @@ This sets up:
 
 #### Setup
 
-1. In `/etc/dovecot/dovecot.conf` and `/etc/postfix/main.cf` replace `mx.example.com` with your domain name.
-2. Get a Let's Encrypt certificate for your mx domain by following the `02_install_http.sh` setup.
+1. **Optional:** Get a Let's Encrypt certificate for your mx domain by following the `02_install_http.sh` setup.
+2. Run `/usr/local/sbin/el7-mx_config mx.example.com` to configure the MX domain `mx.example.com`
 
 #### Add a mail box (user)
 
@@ -274,6 +274,9 @@ Run `/usr/local/sbin/el7-mx_dkim` and follow the instructions.
 TODO: automate this
 
 #### TODOs
+
+- FIXME: dhparam <http://www.postfix.org/FORWARD_SECRECY_README.html>
+- Document: `/etc/postfix/smtpd_sender_login_maps.regexp`
 
 Make these work:
 

@@ -7,14 +7,16 @@ rm -rf /etc/dovecot/conf.d
 yum -y install python34 python34-pip
 pip3.4 install -U pypolicyd-spf pyspf py3dns pip
 
+rm -rf /etc/postfix/*
+
 # COPY CONFIGURATION FILES
 
 # make el7- scripts executable
 chmod u+x /usr/local/sbin/el7-*
 
 alternatives --set mta /usr/sbin/sendmail.postfix
-sudo groupadd -g 5000 vmail
-sudo useradd -m -u 5000 -g 5000 -s /bin/bash vmail
+groupadd -g 5000 vmail
+useradd -m -d /var/vmail -s /bin/false -u 5000 -g vmail vmail
 postmap /etc/postfix/vmaps
 postmap /etc/postfix/smtp_header_checks
 
@@ -44,16 +46,10 @@ firewall-cmd --permanent --direct --add-rule ipv6 filter INPUT_direct 11 -p tcp 
 firewall-cmd --reload
 firewall-cmd --list-all # list rules [optional]
 firewall-cmd --direct --get-all-rules # list rate limiting rules [optional]
-systemctl start dovecot
-systemctl enable dovecot
-systemctl status dovecot
 systemctl start opendkim
 systemctl enable opendkim
 systemctl status opendkim
 systemctl start opendmarc
 systemctl enable opendmarc
 systemctl status opendmarc
-systemctl start postfix
-systemctl enable postfix
-systemctl status postfix # check status [optional]
 

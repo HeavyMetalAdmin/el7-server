@@ -94,7 +94,9 @@ zone "." IN {
 
 include "/etc/named.rfc1912.zones";
 include "/etc/named.root.key";
-include "/etc/named/zones
+include "/etc/named/zones";
+
+
 PASTECONFIGURATIONFILE
 cat > /etc/logrotate.d/named << PASTECONFIGURATIONFILE
 /var/named/data/named.run {
@@ -131,10 +133,16 @@ if [ \$# -ne 2 ]; then
 fi
 ns1="\${1}"
 ns2="\${2}"
+sed '/listen-on/ s/localhost/any/' -i /etc/named.conf
+sed '/allow-query/ s/localhost/any/' -i /etc/named.conf
 sed '/allow-update/ s/none/'\${ns1}'/' -i /etc/named.conf
 sed '/allow-notify/ s/none/'\${ns1}'/' -i /etc/named.conf
 sed '/allow-transfer/ s/none/'\${ns2}'/' -i /etc/named.conf
 sed '/masters/ s/none/'\${ns1}'/' -i /etc/named/zones
+
+firewall-cmd --permanent --add-service=dns
+firewall-cmd --reload
+firewall-cmd --list-all # list rules [optional]
 
 PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
@@ -143,9 +151,6 @@ chmod u+x /usr/local/sbin/el7-*
 chown named:named -R /var/named
 mkdir -p /var/log/named
 chown named:named -R /var/log/named
-firewall-cmd --permanent --add-service=dns
-firewall-cmd --reload
-firewall-cmd --list-all # list rules [optional]
 systemctl start named
 systemctl enable named
 systemctl status named # check status [optional]

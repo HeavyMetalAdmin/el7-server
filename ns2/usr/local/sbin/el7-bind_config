@@ -8,8 +8,14 @@ if [ $# -ne 2 ]; then
 fi
 ns1="${1}"
 ns2="${2}"
+sed '/listen-on/ s/localhost/any/' -i /etc/named.conf
+sed '/allow-query/ s/localhost/any/' -i /etc/named.conf
 sed '/allow-update/ s/none/'${ns1}'/' -i /etc/named.conf
 sed '/allow-notify/ s/none/'${ns1}'/' -i /etc/named.conf
 sed '/allow-transfer/ s/none/'${ns2}'/' -i /etc/named.conf
 sed '/masters/ s/none/'${ns1}'/' -i /etc/named/zones
+
+firewall-cmd --permanent --add-service=dns
+firewall-cmd --reload
+firewall-cmd --list-all # list rules [optional]
 

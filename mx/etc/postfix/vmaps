@@ -1,3 +1,1 @@
-user@example.com	example.com/user/
 # catch all mail to @example.com to user@example.com
-@example.com	example.com/user/
