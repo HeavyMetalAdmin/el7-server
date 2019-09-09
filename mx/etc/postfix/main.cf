@@ -47,7 +47,8 @@ smtpd_hard_error_limit = 1
 smtpd_helo_required     = yes
 smtpd_error_sleep_time = 0
 smtpd_tls_auth_only = yes
-smtpd_tls_mandatory_ciphers=high
+tls_preempt_cipherlist = yes
+smtpd_tls_mandatory_ciphers = high
 smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3
 smtpd_tls_exclude_ciphers=eNULL:aNULL:LOW:MEDIUM:DES:3DES:RC4:MD5:RSA:SHA1
 smtpd_tls_dh1024_param_file = ${config_directory}/dhparams.pem
@@ -147,13 +148,12 @@ smtpd_client_event_limit_exceptions = $mynetworks
 # SPF
 policyd-spf_time_limit = 3600s
 
-# DKIM
+# DKIM, DMARC
 milter_default_action = accept
 milter_protocol = 2
-smtpd_milters = inet:localhost:8891
-non_smtpd_milters = inet:localhost:8891
+smtpd_milters = inet:localhost:8891,inet:localhost:8893
+non_smtpd_milters = inet:localhost:8891,inet:localhost:8893
 
-# TODO: DMARC
 
 alias_maps = hash:/etc/aliases
 

@@ -25,8 +25,9 @@ cat > /etc/named.conf << PASTECONFIGURATIONFILE
 options {
 	version none;
 	listen-on port 53 { any; };
+	listen-on-v6 port 53 { any; };
 	directory         "/var/named";
-	allow-query       { any; };
+	allow-query       { localhost; };
 	allow-update      { none; }; # IP of ns1
 	allow-notify      { none; }; # IP of ns1
 	notify yes;
@@ -142,7 +143,7 @@ ns2	IN AAAA 0:0:0:0:0:ffff:404:404
 
 @	IN MX 1 mx.example.com.
 @	IN TXT "v=spf1 mx -all"
-_dmarc  IN TXT "v=DMARC1; p=reject; rua=mailto:dmarc-asjhgoeahfgsdf@example.com; ruf=mailto:dmarc-asfjsafjsadf@example.comi; fo=1:d:s"
+_dmarc  IN TXT "v=DMARC1; p=reject; rua=mailto:dmarc-asjhgoeahfgsdf@example.com; ruf=mailto:dmarc-asfjsafjsadf@example.comi; fo=1;"
 
 *._report._dmarc IN TXT "v=DMARC1;"
 

@@ -27,8 +27,9 @@ chmod 700 /home/vmail/$domain
 
 echo "Adding user to /etc/postfix/vmaps"
 echo "${1}  $domain/$username/" >> /etc/postfix/vmaps
-# sort in reverse order to not have catch all @example.com lines before user@example.com
-sort -ru /etc/postfix/vmaps -o /etc/postfix/vmaps # remove dups
+sort -u /etc/postfix/vmaps -o /etc/postfix/vmaps # remove dups
+new_vmaps=$(grep -v "^@" /etc/postfix/vmaps; grep "^@" /etc/postfix/vmaps) # sort
+echo "${new_vmaps}" > /etc/postfix/vmaps
 postmap /etc/postfix/vmaps
 postfix reload
 

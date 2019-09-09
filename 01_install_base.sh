@@ -52,7 +52,7 @@ systemctl restart dbus # FIX: ERROR: Exception DBusException: org.freedesktop.DB
 systemctl start firewalld
 systemctl enable firewalld
 systemctl status firewalld
-firewall-cmd --permanent --zone=public --change-interface=$(ip route | grep default | grep -Po '(?<=dev )(\S+)')
+firewall-cmd --permanent --zone=public --change-interface="$(ip route | grep default | grep -Po '(?<=dev )(\S+)')"
 
 ## ssh
 yum install -y openssh

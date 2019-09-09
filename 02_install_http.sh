@@ -36,8 +36,8 @@ ErrorLog "logs/error_log"
 LogLevel warn
 #ForensicLog "logs/forensic_log"
 <IfModule log_config_module>
-	LogFormat "\\"%A\\",\\"%v\\",\\"%{%Y%m%dT%H%M%S}t.%{msec_frac}t%{%z}t\\",\\"%{uniqueid}i\\",\\"%L\\",\\"%l\\",\\"%a\\",\\"%h\\",\\"%{c}a\\",\\"%u\\",\\"%{remote}p\\",\\"%{local}p\\",\\"%H\\",\\"%{SSL_PROTOCOL}x\\",\\"%{SSL_CIPHER}x\\",\\"%m\\",\\"%s\\",\\"%>s\\",\\"%U\\",\\"%q\\",\\"%{Referer}i\\",\\"%{User-Agent}i\\",\\"%k\\",\\"%f\\"" paranoid
-	LogFormat "\\"%A\\",\\"%v\\",\\"%{%Y%m%dT%H%M%S}t.%{msec_frac}t%{%z}t\\",\\"%{uniqueid}i\\",\\"%L\\",\\"%l\\",\\"%a\\",\\"%h\\",\\"%{c}a\\",\\"%u\\",\\"%{remote}p\\",\\"%{local}p\\",\\"%H\\",\\"%{SSL_PROTOCOL}x\\",\\"%{SSL_CIPHER}x\\",\\"%m\\",\\"%s\\",\\"%>s\\",\\"%U\\",\\"%q\\",\\"%{Referer}i\\",\\"%{User-Agent}i\\",\\"%k\\",\\"%f\\",\\"%{Cookie}i\\",\\"%{Set-Cookie}o\\"" fullparanoid
+	LogFormat "\\"%A\\",\\"%v\\",\\"%{%Y%m%dT%H%M%S}t.%{msec_frac}t%{%z}t\\",\\"%{uniqueid}i\\",\\"%L\\",\\"%l\\",\\"%a\\",\\"%h\\",\\"%{c}a\\",\\"%{c}h\\",\\"%u\\",\\"%{remote}p\\",\\"%{local}p\\",\\"%H\\",\\"%{SSL_PROTOCOL}x\\",\\"%{SSL_CIPHER}x\\",\\"%m\\",\\"%s\\",\\"%>s\\",\\"%{Host}i\\",\\"%U\\",\\"%q\\",\\"%{Referer}i\\",\\"%{User-Agent}i\\",\\"%k\\",\\"%f\\"" paranoid
+	LogFormat "\\"%A\\",\\"%v\\",\\"%{%Y%m%dT%H%M%S}t.%{msec_frac}t%{%z}t\\",\\"%{uniqueid}i\\",\\"%L\\",\\"%l\\",\\"%a\\",\\"%h\\",\\"%{c}a\\",\\"%{c}h\\",\\"%u\\",\\"%{remote}p\\",\\"%{local}p\\",\\"%H\\",\\"%{SSL_PROTOCOL}x\\",\\"%{SSL_CIPHER}x\\",\\"%m\\",\\"%s\\",\\"%>s\\",\\"%{Host}i\\",\\"%U\\",\\"%q\\",\\"%{Referer}i\\",\\"%{User-Agent}i\\",\\"%k\\",\\"%f\\",\\"%{Cookie}i\\",\\"%{Set-Cookie}o\\"" fullparanoid
 
 	CustomLog "logs/access_log" paranoid
 </IfModule>
@@ -504,15 +504,17 @@ cat > /etc/httpd/conf.d/vhost.conf << PASTECONFIGURATIONFILE
 
 
 
+
 <Macro VHost \${domain}>
 
 <VirtualHost *:80 *:443>
 ServerName \${domain}
+ServerAlias \${domain}.
 
 RewriteEngine On
 RewriteCond %{HTTPS} !=on
 RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
-RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [END,NE,R=permanent]
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
 
 
 ErrorLog "logs/\${domain}-error_log"
@@ -595,11 +597,12 @@ BrowserMatch "MSIE [2-5]" \\
 
 <VirtualHost *:80 *:443>
 ServerName \${domain}
+ServerAlias \${domain}.
 
 RewriteEngine On
 RewriteCond %{HTTPS} !=on
 RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
-RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [END,NE,R=permanent]
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
 
 
 ErrorLog "logs/\${domain}-error_log"
@@ -684,6 +687,8 @@ BrowserMatch "MSIE [2-5]" \\
 
 <VirtualHost *:80>
 ServerName \${domain}
+ServerAlias \${domain}.
+
 DocumentRoot "/var/www/html/\${domain}"
 
 <Directory "/var/www/html/\${domain}">
@@ -722,8 +727,12 @@ DocumentRoot "/var/www/html/\${domain}"
 
 <VirtualHost *:80 *:443>
 ServerName \${domain}
+ServerAlias \${domain}.
 
 RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
 RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
 RewriteRule ^ https://\${rdomain}%{REQUEST_URI} [END,NE,R=permanent]
 

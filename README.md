@@ -173,21 +173,24 @@ To get a domain redirection change the configuration in step 3 above to `Use red
 #### TODO
 
 - FIXME: Stapling on the IP host with the self signed SSL cert does not work and floods error_log (`ssl_stapling_init_cert: can't retrieve issuer certificate!`)
+- TODO: deal with FQDN trailing dots; this leads to TLS failing as `example.com` != `example.com.`
 
-### 02_install_ns.sh (BIND name server)
+### 02_install_ns{1,2}.sh (BIND name server)
 
 Installs and configures BIND name server.
 
-**NOTE:** In case you only want a local recursive nameserver (e.g. to run RBL DNS queries as  prerequisite to `02_install_mx.sh`) you don't need to do any post install configuration.
+**NOTE:** In case you only want a local recursive nameserver (e.g. to run RBL DNS queries as  prerequisite to `02_install_mx.sh`) just run `02_install_ns1.sh` and you don't need to do any post install configuration.
 
 In case you want a ns1 (master/primary) and ns2 (slave/secondary) nameserver setup do the following:
 
 1. After install run `/usr/local/sbin/el7-bind_config <IP of ns1> <IP of ns2>` to configure the ns1 and ns2 IPs in `/etc/named.conf`.
-2. Edit `/etc/named/zones` to add your zones.
-3. Edit your zones, for `example.com` the file would be in  `/var/named/example.com` etc.
+2. Edit `/etc/named/zones` to add your zones (do this on both ns1 and ns2)
+3. Edit your zones, for `example.com` the file would be in  `/var/named/example.com` etc. (only on ns1, ns2 gets the updates via DNS update mechanism)
 4. Optional: Follow DNSSEC setup below
 
 #### DNSSEC
+
+To sign your zones in `/var/named/example.com` (only available on ns1) do:
 
 1. To setup DNSSEC for a zone, i.e., generate (or regenerate) keys, etc. run: `/usr/local/sbin/el7-dnssec_setup example.com`
 2. To (re-)sign a zone, run: `/usr/local/sbin/el7-dnssec_sign example.com`
@@ -199,9 +202,10 @@ In case you want a ns1 (master/primary) and ns2 (slave/secondary) nameserver set
 
 #### TODOs
 
-* Automate zone generation / changes
-* Automated zone resigning; currently zones are signed with a validity of 1 year
-* CDS: does not work in RHEL7
+- Automate zone generation / changes
+- Automated zone resigning; currently zones are signed with a validity of 1 year
+- CDS: does not work in RHEL7
+- When BIND 9.11 add query response logging via dnstap
 
 #### Fixes
 
@@ -233,17 +237,23 @@ This sets up:
 
 #### Add a mail box (user)
 
+Run:
+
 ```
 /usr/local/sbin/el7-mx_add_user user@example.com
 ```
 
+This will prompt for a password you would like to set for `user@example.com`.
+
 This will generate a postfix mailbox as well as a POP3 Dovecot mailbox by editing the following files:
+
 - `/etc/postfix/vhosts
 - `/etc/postfix/vmaps` (and (re-)generating `/etc/postfix/vmaps.db`)
 - `/etc/dovecot/users`
 - `/etc/dovecot/passwd`
 
 Mail user can then use:
+
 - SMPTs on 465/tcp with (CRAM-MD5) encrypted password and username `user@example.com`.
 - POP3s on 995/tcp with (CRAM-MD5) encrypted password and username `user@example.com`.
 - SMTP on 25/tcp to receive mail addressed to `user@example.com`.
@@ -276,7 +286,10 @@ Make these work:
 - Backup MX: https://www.howtoforge.com/postfix_backup_mx
 - Squirrelmail (as a separate script)
 - NS add: `_adsp._domainkey IN TXT "dkim=all"`
-- `smtp_check_headers` doesn't clean private stuff when sending from one local email to another local email account :/
+
+- Local problems:
+	- `smtp_check_headers` doesn't clean private stuff when sending from one local email to another local email account :/
+	- mail send from one local user to another local user are not DKIM signed :/
 
 - Make work with `/etc/selinux/config`: `SELINUX=enforcing`
 - Spamassassin: https://www.akadia.com/services/postfix_spamassassin.html
@@ -328,10 +341,11 @@ yum check
 ## Future proofing 
 
 - Periodically run and adapt accordingly:
-	- `testssl`
+	- `testssl domain` and `testssl --mx mx.domain`
 	- <https://ssllabs.com/>
 	- <https://securityheaders.com/>
 	- <https://internet.nl/>
+	- <https://www.hardenize.com>
 	- <https://mxtoolbox.com/domain/example.com>
 - Keep up with:
 	- <https://cipherli.st/>
