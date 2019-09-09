@@ -23,8 +23,8 @@ PASTECONFIGURATIONFILE
 cat > /etc/named.conf << PASTECONFIGURATIONFILE
 options {
 	version none;
-	listen-on port 53 { any; };
-	listen-on-v6 port 53 { any; };
+	listen-on port 53 { localhost; };
+	listen-on-v6 port 53 { localhost; };
 	directory         "/var/named";
 	allow-query       { localhost; };
 	allow-update      { none; }; # IP of ns1
