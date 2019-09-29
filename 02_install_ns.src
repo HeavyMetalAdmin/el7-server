@@ -13,3 +13,4 @@ chown named:named -R /var/log/named
 systemctl start named
 systemctl enable named
 systemctl status named # check status [optional]
+
