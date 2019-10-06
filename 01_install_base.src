@@ -9,7 +9,7 @@ yum -y install kernel
 grub2-mkconfig --output=/boot/grub2/grub.cfg
 
 # remove provider monitoring, setup and "backdoor" stuff
-yum -y remove cloud-init vzdummy-systemd-el7.noarch
+yum -y remove cloud-init vzdummy-systemd-el7.noarch beamium noderig
 # ovh
 sed '/^[^#]/ s_\(^.*/usr/local/rtm/bin/rtm.*$\)_#\1_g' -i /etc/crontab
 killall -9 rtm

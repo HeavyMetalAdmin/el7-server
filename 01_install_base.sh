@@ -9,7 +9,7 @@ yum -y install kernel
 grub2-mkconfig --output=/boot/grub2/grub.cfg
 
 # remove provider monitoring, setup and "backdoor" stuff
-yum -y remove cloud-init vzdummy-systemd-el7.noarch
+yum -y remove cloud-init vzdummy-systemd-el7.noarch beamium noderig
 # ovh
 sed '/^[^#]/ s_\(^.*/usr/local/rtm/bin/rtm.*$\)_#\1_g' -i /etc/crontab
 killall -9 rtm
@@ -67,40 +67,6 @@ mkdir -p /etc/yum
 mkdir -p /usr
 mkdir -p /usr/local
 mkdir -p /usr/local/sbin
-cat > /etc/ssh/sshd_config << PASTECONFIGURATIONFILE
-# change port, obscurity is a valid security layer!
-Port 226
-
-# VERBOSE login to log user's key fingerprints on login.
-LogLevel VERBOSE
-SyslogFacility AUTHPRIV
-
-HostKey /etc/ssh/ssh_host_ed25519_key
-AuthorizedKeysFile %h/.ssh/authorized_keys
-#RevokedKeys /etc/ssh/revokeyd_keys # TODO: check if this works
-
-PermitRootLogin prohibit-password # NOTE: change to 'no' for multiuser system
-UsePAM yes
-
-AuthenticationMethods publickey #,keyboard-interactive # TODO: do 2FA or kerberos
-PubkeyAuthentication yes
-PermitEmptyPasswords no
-HostbasedAuthentication no
-PasswordAuthentication no
-ChallengeResponseAuthentication no
-KerberosAuthentication no
-GSSAPIAuthentication no
-ExposeAuthenticationMethods never
-
-X11Forwarding no
-IgnoreRhosts yes
-
-StrictModes yes
-UsePrivilegeSeparation sandbox
-
-MaxAuthTries 1
-
-PASTECONFIGURATIONFILE
 cat > /etc/logrotate.conf << PASTECONFIGURATIONFILE
 # see "man logrotate" for details
 # rotate log files weekly
@@ -137,6 +103,40 @@ include /etc/logrotate.d
 }
 
 # system-specific logs may be also be configured here.
+PASTECONFIGURATIONFILE
+cat > /etc/ssh/sshd_config << PASTECONFIGURATIONFILE
+# change port, obscurity is a valid security layer!
+Port 226
+
+# VERBOSE login to log user's key fingerprints on login.
+LogLevel VERBOSE
+SyslogFacility AUTHPRIV
+
+HostKey /etc/ssh/ssh_host_ed25519_key
+AuthorizedKeysFile %h/.ssh/authorized_keys
+#RevokedKeys /etc/ssh/revokeyd_keys # TODO: check if this works
+
+PermitRootLogin prohibit-password # NOTE: change to 'no' for multiuser system
+UsePAM yes
+
+AuthenticationMethods publickey #,keyboard-interactive # TODO: do 2FA or kerberos
+PubkeyAuthentication yes
+PermitEmptyPasswords no
+HostbasedAuthentication no
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+KerberosAuthentication no
+GSSAPIAuthentication no
+ExposeAuthenticationMethods never
+
+X11Forwarding no
+IgnoreRhosts yes
+
+StrictModes yes
+UsePrivilegeSeparation sandbox
+
+MaxAuthTries 1
+
 PASTECONFIGURATIONFILE
 cat > /etc/yum/yum-cron-hourly.conf << PASTECONFIGURATIONFILE
 [commands]
@@ -303,27 +303,6 @@ mdpolicy = group:main
 # Uncomment to auto-import new gpg keys (dangerous)
 # assumeyes = True
 PASTECONFIGURATIONFILE
-cat > /usr/local/sbin/el7-firewall_remove_whitelist_ssh << PASTECONFIGURATIONFILE
-#!/bin/bash
-if [ \$# -gt 1 ]; then
-	echo "Remove SSH IP from white list"
-	echo
-	echo "usage: \${0} [IP]"
-	echo
-	echo "If IP is not given IP from \\\$SSH_CLIENT will be used."
-	echo
-	exit 1
-fi
-if [ \$# -eq 0 ]; then
-	IP="\$(echo \$SSH_CLIENT | cut -d' ' -f1)"
-	echo "No IP given using IP from \\\$SSH_CLIENT (\${IP})"
-else
-	IP="\${1}"
-fi
-firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 0 -p tcp -s "\${IP}" --dport 226 -m state --state NEW -j ACCEPT
-firewall-cmd --reload
-
-PASTECONFIGURATIONFILE
 cat > /usr/local/sbin/el7-firewall_add_whitelist_ssh << PASTECONFIGURATIONFILE
 #!/bin/bash
 if [ \$# -gt 1 ]; then
@@ -342,6 +321,27 @@ else
 	IP="\${1}"
 fi
 firewall-cmd --permanent --direct --add-rule ipv4 filter INPUT_direct 0 -p tcp -s "\${IP}" --dport 226 -m state --state NEW -j ACCEPT
+firewall-cmd --reload
+
+PASTECONFIGURATIONFILE
+cat > /usr/local/sbin/el7-firewall_remove_whitelist_ssh << PASTECONFIGURATIONFILE
+#!/bin/bash
+if [ \$# -gt 1 ]; then
+	echo "Remove SSH IP from white list"
+	echo
+	echo "usage: \${0} [IP]"
+	echo
+	echo "If IP is not given IP from \\\$SSH_CLIENT will be used."
+	echo
+	exit 1
+fi
+if [ \$# -eq 0 ]; then
+	IP="\$(echo \$SSH_CLIENT | cut -d' ' -f1)"
+	echo "No IP given using IP from \\\$SSH_CLIENT (\${IP})"
+else
+	IP="\${1}"
+fi
+firewall-cmd --permanent --direct --remove-rule ipv4 filter INPUT_direct 0 -p tcp -s "\${IP}" --dport 226 -m state --state NEW -j ACCEPT
 firewall-cmd --reload
 
 PASTECONFIGURATIONFILE

@@ -6,19 +6,34 @@ yum -y install bind bind-utils #haveged
 # systemctl enable haveged
 # COPY CONFIGURATION FILES
 mkdir -p /etc
-mkdir -p /etc/named
 mkdir -p /etc/logrotate.d
+mkdir -p /etc/named
 mkdir -p /usr
 mkdir -p /usr/local
 mkdir -p /usr/local/sbin
-cat > /etc/named/zones << PASTECONFIGURATIONFILE
-/*
-zone "example.com" IN {
-	type slave;
-	masters {none; }; # IP of ns1
-	file "example.com.signed";
-};
-*/
+cat > /etc/logrotate.d/named << PASTECONFIGURATIONFILE
+/var/named/data/named.run {
+    missingok
+    su named named
+    create 0644 named named
+    postrotate
+        /usr/bin/systemctl reload named.service > /dev/null 2>&1 || true
+        /usr/bin/systemctl reload named-chroot.service > /dev/null 2>&1 || true
+        /usr/bin/systemctl reload named-sdb.service > /dev/null 2>&1 || true
+        /usr/bin/systemctl reload named-sdb-chroot.service > /dev/null 2>&1 || true
+        /usr/bin/systemctl reload named-pkcs11.service > /dev/null 2>&1 || true
+    endscript
+}
+
+/var/log/named/*.log {
+  create 0644 named named
+  missingok
+  notifempty
+  sharedscripts
+  postrotate
+    /usr/sbin/rndc reconfig > /dev/null 2>/dev/null || true
+  endscript
+}
 PASTECONFIGURATIONFILE
 cat > /etc/named.conf << PASTECONFIGURATIONFILE
 options {
@@ -98,29 +113,14 @@ include "/etc/named/zones";
 
 
 PASTECONFIGURATIONFILE
-cat > /etc/logrotate.d/named << PASTECONFIGURATIONFILE
-/var/named/data/named.run {
-    missingok
-    su named named
-    create 0644 named named
-    postrotate
-        /usr/bin/systemctl reload named.service > /dev/null 2>&1 || true
-        /usr/bin/systemctl reload named-chroot.service > /dev/null 2>&1 || true
-        /usr/bin/systemctl reload named-sdb.service > /dev/null 2>&1 || true
-        /usr/bin/systemctl reload named-sdb-chroot.service > /dev/null 2>&1 || true
-        /usr/bin/systemctl reload named-pkcs11.service > /dev/null 2>&1 || true
-    endscript
-}
-
-/var/log/named/*.log {
-  create 0644 named named
-  missingok
-  notifempty
-  sharedscripts
-  postrotate
-    /usr/sbin/rndc reconfig > /dev/null 2>/dev/null || true
-  endscript
-}
+cat > /etc/named/zones << PASTECONFIGURATIONFILE
+/*
+zone "example.com" IN {
+	type slave;
+	masters {none; }; # IP of ns1
+	file "example.com.signed";
+};
+*/
 PASTECONFIGURATIONFILE
 cat > /usr/local/sbin/el7-bind_config << PASTECONFIGURATIONFILE
 #!/bin/bash
@@ -154,3 +154,4 @@ chown named:named -R /var/log/named
 systemctl start named
 systemctl enable named
 systemctl status named # check status [optional]
+
