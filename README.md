@@ -302,6 +302,28 @@ Make these work:
 - Postfix: `/var/log/maillog`
 - Dovecot: `/var/log/dovecot`, `/var/log/dovecot.info`
 
+## Admin tasks
+
+### Block IP
+
+**Block:**
+
+```
+firewall-cmd --zone=drop --add-source=<CIDR>
+```
+
+**Show blocked:**
+
+```
+firewall-cmd --zone=drop --list-all
+```
+
+**Unblock:**
+
+```
+firewall-cmd --zone=drop --remove-source=<CIDR>
+```
+
 ## Trouble shooting
 
 ### rsyslog
