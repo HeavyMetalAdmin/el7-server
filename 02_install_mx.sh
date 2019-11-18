@@ -5,7 +5,7 @@ rm -rf /etc/dovecot/conf.d
 
 # SPF ... this is a bit ugly
 yum -y install python34 python34-pip
-pip3.4 install -U pypolicyd-spf pyspf py3dns pip
+pip3.4 install -U pypolicyd-spf==2.0.2 pyspf==2.0.11 py3dns==3.2.0 pip
 
 rm -rf /etc/postfix/*
 
@@ -1073,9 +1073,6 @@ groupadd -g 5000 vmail
 useradd -m -d /var/vmail -s /bin/false -u 5000 -g vmail vmail
 postmap /etc/postfix/vmaps
 postmap /etc/postfix/smtp_header_checks
-
-chmod +x /usr/local/sbin/adddovecotuser
-chmod +x /usr/local/sbin/deldovecotuser
 
 openssl dhparam -out /etc/postfix/dhparams.pem 2048
 openssl dhparam -out /etc/dovecot/dhparams.pem 2048

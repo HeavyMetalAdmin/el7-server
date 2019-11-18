@@ -302,6 +302,26 @@ Make these work:
 - Postfix: `/var/log/maillog`
 - Dovecot: `/var/log/dovecot`, `/var/log/dovecot.info`
 
+#### Debugging
+
+-SMTP
+
+```
+nc mx.example.com 25
+```
+
+- SMTPS
+
+```
+openssl s_client -crlf -connect mx.example.com:465 -servername mx.example.com
+```
+
+- POP3s
+
+```
+openssl s_client -crlf -connect mx.example.com:995 -servername mx.example.com
+```
+
 ## Admin tasks
 
 ### Block IP
