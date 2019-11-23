@@ -7,510 +7,16 @@ rm -rf /etc/httpd/conf.modules.d/*
 # COPY CONFIGURATION FILES
 mkdir -p /etc
 mkdir -p /etc/httpd
+mkdir -p /etc/httpd/conf
 mkdir -p /etc/httpd/conf.d
 mkdir -p /etc/httpd/conf.modules.d
-mkdir -p /etc/httpd/conf
-mkdir -p /usr
-mkdir -p /usr/local
-mkdir -p /usr/local/sbin
 mkdir -p /var
 mkdir -p /var/www
 mkdir -p /var/www/html
 mkdir -p /var/www/html/blank
-cat > /etc/httpd/conf.d/ssl.conf << PASTECONFIGURATIONFILE
-Listen 443 https
-
-SSLPassPhraseDialog exec:/usr/libexec/httpd-ssl-pass-dialog
-
-SSLSessionCache         shmcb:/run/httpd/sslcache(512000)
-SSLSessionCacheTimeout  300
-
-SSLRandomSeed startup file:/dev/urandom  256
-SSLRandomSeed connect builtin
-
-SSLCryptoDevice builtin
-
-# openssl ciphers -v 'ALL:!eNULL:!aNULL:!LOW:!MEDIUM:!DES:!3DES:!RC4:!MD5:!RSA:!SHA1:@STRENGTH'
-SSLCipherSuite ALL:!eNULL:!aNULL:!LOW:!MEDIUM:!DES:!3DES:!RC4:!MD5:!RSA:!SHA1:@STRENGTH
-
-# NOTE: if something goes down switch to these (highest securirty)
-#SSLCipherSuite ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-GCM-SHA256
-
-SSLProtocol All -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
-SSLHonorCipherOrder On
-Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
-Header always set X-Frame-Options DENY
-Header always set X-Content-Type-Options nosniff
-Header always set Content-Security-Policy "upgrade-insecure-requests;"
-SSLCompression off
-SSLUseStapling on
-SSLStaplingCache "shmcb:logs/stapling-cache(150000)"
-# Requires Apache >= 2.4.11
-#SSLSessionTickets Off
-
-
-PASTECONFIGURATIONFILE
-cat > /etc/httpd/conf.d/vhost.conf << PASTECONFIGURATIONFILE
-
-
-
-
-<Macro VHost \${domain}>
-
-<VirtualHost *:80 *:443>
-ServerName \${domain}
-ServerAlias \${domain}.
-
-RewriteEngine On
-RewriteCond %{HTTPS} !=on
-RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
-RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
-
-
-ErrorLog "logs/\${domain}-error_log"
-#ForensicLog logs/\${domain}-forensic_log
-LogLevel warn
-<IfModule log_config_module>
-	CustomLog "logs/\${domain}-access_log" paranoid
-</IfModule>
-
-SSLEngine on
-SSLCertificateFile /etc/letsencrypt/live/\${domain}/cert.pem
-SSLCertificateKeyFile /etc/letsencrypt/live/\${domain}/privkey.pem
-SSLCertificateChainFile /etc/letsencrypt/live/\${domain}/chain.pem
-
-SSLCompression off
-
-# test stapling via:
-# echo | openssl s_client -servername \${domain} -connect \${domain}:443 -tls1_2  -tlsextdebug  -status | grep "OCSP response: no response sent" && echo FAIL || echo OK
-SSLUseStapling on
-SSLStaplingResponderTimeout 2
-SSLStaplingReturnResponderErrors off
-SSLStaplingFakeTryLater off
-SSLStaplingStandardCacheTimeout 86400
-
-# test headers via:
-# testssl \${domain}
-# curl -v https://\${domain}
-Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" env=HTTPS
-Header always set X-Frame-Options "DENY"
-Header always set X-Content-Type-Options "nosniff"
-Header always set Content-Security-Policy "upgrade-insecure-requests;"
-Header always set X-XSS-Protection "1; mode=block"
-Header always set Feature-Policy "geolocation 'none'; midi 'none'; notifications 'none'; push 'none'; sync-xhr 'none'; microphone 'none'; camera 'none'; magnetometer 'none'; gyroscope 'none'; speaker 'none'; vibrate 'none'; fullscreen 'self'; payment 'none';"
-Header always set Referrer-Policy "no-referrer"
-Header always unset "X-Powered-By"
-Header unset "X-Powered-By"
-Header always unset "Server"
-Header unset "Server"
-
-DocumentRoot "/var/www/html/\${domain}"
-
-<Directory "/var/www/html/\${domain}">
-	AllowOverride None
-	Require all granted
-</Directory>
-
-<IfModule dir_module>
-    DirectoryIndex index.html
-</IfModule>
-
-<Files ".ht*">
-	Require all denied
-</Files>
-
-
-<Files ~ "\\.(cgi|shtml|phtml|php3?)\$">
-    SSLOptions +StdEnvVars
-</Files>
-<Directory "/var/www/cgi-bin">
-    SSLOptions +StdEnvVars
-</Directory>
-
-BrowserMatch "MSIE [2-5]" \\
-         nokeepalive ssl-unclean-shutdown \\
-         downgrade-1.0 force-response-1.0
-
-</VirtualHost>               
-
-</Macro>
-
-
-
-
-
-
-
-
-
-<Macro VHostHT \${domain}>
-
-<VirtualHost *:80 *:443>
-ServerName \${domain}
-ServerAlias \${domain}.
-
-RewriteEngine On
-RewriteCond %{HTTPS} !=on
-RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
-RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
-
-
-ErrorLog "logs/\${domain}-error_log"
-#ForensicLog logs/\${domain}-forensic_log
-LogLevel warn
-<IfModule log_config_module>
-	CustomLog "logs/\${domain}-access_log" paranoid
-</IfModule>
-
-SSLEngine on
-SSLCertificateFile /etc/letsencrypt/live/\${domain}/cert.pem
-SSLCertificateKeyFile /etc/letsencrypt/live/\${domain}/privkey.pem
-SSLCertificateChainFile /etc/letsencrypt/live/\${domain}/chain.pem
-
-SSLCompression off
-
-# test stapling via:
-# echo | openssl s_client -servername \${domain} -connect \${domain}:443 -tls1_2  -tlsextdebug  -status | grep "OCSP response: no response sent" && echo FAIL || echo OK
-SSLUseStapling on
-SSLStaplingResponderTimeout 2
-SSLStaplingReturnResponderErrors off
-SSLStaplingFakeTryLater off
-SSLStaplingStandardCacheTimeout 86400
-
-# test headers via:
-# testssl \${domain}
-# curl -v https://\${domain}
-Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" env=HTTPS
-Header always set X-Frame-Options DENY
-Header always set X-Content-Type-Options nosniff
-Header always set Content-Security-Policy "upgrade-insecure-requests;"
-Header always set X-XSS-Protection "1; mode=block"
-Header always set Feature-Policy "geolocation 'none'; midi 'none'; notifications 'none'; push 'none'; sync-xhr 'none'; microphone 'none'; camera 'none'; magnetometer 'none'; gyroscope 'none'; speaker 'none'; vibrate 'none'; fullscreen 'self'; payment 'none';"
-Header always set Referrer-Policy no-referrer
-Header always unset "X-Powered-By"
-Header unset "X-Powered-By"
-Header always unset "Server"
-Header unset "Server"
-
-DocumentRoot "/var/www/html/\${domain}"
-
-<Directory "/var/www/html/\${domain}">
-	AllowOverride Options=Indexes AuthConfig
-	Require all granted
-</Directory>
-
-<IfModule dir_module>
-    DirectoryIndex index.html
-</IfModule>
-
-<Files ".ht*">
-	Require all denied
-</Files>
-
-
-<Files ~ "\\.(cgi|shtml|phtml|php3?)\$">
-    SSLOptions +StdEnvVars
-</Files>
-<Directory "/var/www/cgi-bin">
-    SSLOptions +StdEnvVars
-</Directory>
-
-BrowserMatch "MSIE [2-5]" \\
-         nokeepalive ssl-unclean-shutdown \\
-         downgrade-1.0 force-response-1.0
-
-</VirtualHost>               
-
-</Macro>
-
-
-
-
-
-
-
-
-
-
-
-<Macro noSSLVHost \${domain}>
-
-<VirtualHost *:80>
-ServerName \${domain}
-ServerAlias \${domain}.
-
-DocumentRoot "/var/www/html/\${domain}"
-
-<Directory "/var/www/html/\${domain}">
-	AllowOverride None
-	Require all granted
-</Directory>
-
-<IfModule dir_module>
-    DirectoryIndex index.html
-</IfModule>
-
-<Files ".ht*">
-	Require all denied
-</Files>
-
-</VirtualHost>
-
-</Macro>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<Macro redirVHost \${domain} \${rdomain}>
-
-<VirtualHost *:80 *:443>
-ServerName \${domain}
-ServerAlias \${domain}.
-
-RewriteEngine On
-RewriteCond %{HTTPS} !=on
-RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
-RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
-RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
-RewriteRule ^ https://\${rdomain}%{REQUEST_URI} [END,NE,R=permanent]
-
-ErrorLog "logs/\${domain}-error_log"
-#ForensicLog logs/\${domain}-forensic_log
-LogLevel warn
-<IfModule log_config_module>
-	CustomLog "logs/\${domain}-access_log" paranoid
-</IfModule>
-
-SSLEngine on
-SSLCertificateFile /etc/letsencrypt/live/\${domain}/cert.pem
-SSLCertificateKeyFile /etc/letsencrypt/live/\${domain}/privkey.pem
-SSLCertificateChainFile /etc/letsencrypt/live/\${domain}/chain.pem
-
-
-
-# test stapling via:
-# echo | openssl s_client -servername \${domain} -connect \${domain}:443 -tls1_2  -tlsextdebug  -status | grep "OCSP response: no response sent" && echo FAIL || echo OK
-SSLUseStapling on
-SSLStaplingResponderTimeout 2
-SSLStaplingReturnResponderErrors off
-SSLStaplingFakeTryLater off
-SSLStaplingStandardCacheTimeout 86400
-
-# test headers via:
-# testssl \${domain}
-# curl -v https://\${domain}
-Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" env=HTTPS
-Header always set X-Frame-Options DENY
-Header always set X-Content-Type-Options nosniff
-Header always set Content-Security-Policy "upgrade-insecure-requests;"
-Header always set X-XSS-Protection "1; mode=block"
-Header always set Feature-Policy "geolocation 'none'; midi 'none'; notifications 'none'; push 'none'; sync-xhr 'none'; microphone 'none'; camera 'none'; magnetometer 'none'; gyroscope 'none'; speaker 'none'; vibrate 'none'; fullscreen 'self'; payment 'none';"
-Header always set Referrer-Policy no-referrer
-Header always unset "X-Powered-By"
-Header unset "X-Powered-By"
-Header always unset "Server"
-Header unset "Server"
-
-
-
-
-DocumentRoot "/var/www/html/\${domain}"
-
-<Directory "/var/www/html/\${domain}">
-	AllowOverride None
-	Require all granted
-</Directory>
-
-<IfModule dir_module>
-    DirectoryIndex index.html
-</IfModule>
-
-<Files ".ht*">
-	Require all denied
-</Files>
-
-</VirtualHost>               
-
-</Macro>
-
-
-# INSERT VHOSTS HERE
-
-#Use noSSLVHost example.com
-
-
-UndefMacro VHost
-UndefMacro VHostHT
-UndefMacro noSSLVHost
-UndefMacro redirVHost
-
-
-
-PASTECONFIGURATIONFILE
-cat > /etc/httpd/conf.modules.d/00-base.conf << PASTECONFIGURATIONFILE
-#
-# This file loads most of the modules included with the Apache HTTP
-# Server itself.
-#
-
-LoadModule access_compat_module modules/mod_access_compat.so
-LoadModule actions_module modules/mod_actions.so
-LoadModule alias_module modules/mod_alias.so
-LoadModule allowmethods_module modules/mod_allowmethods.so
-LoadModule auth_basic_module modules/mod_auth_basic.so
-LoadModule auth_digest_module modules/mod_auth_digest.so
-LoadModule authn_anon_module modules/mod_authn_anon.so
-LoadModule authn_core_module modules/mod_authn_core.so
-LoadModule authn_dbd_module modules/mod_authn_dbd.so
-LoadModule authn_dbm_module modules/mod_authn_dbm.so
-LoadModule authn_file_module modules/mod_authn_file.so
-LoadModule authn_socache_module modules/mod_authn_socache.so
-LoadModule authz_core_module modules/mod_authz_core.so
-LoadModule authz_dbd_module modules/mod_authz_dbd.so
-LoadModule authz_dbm_module modules/mod_authz_dbm.so
-LoadModule authz_groupfile_module modules/mod_authz_groupfile.so
-LoadModule authz_host_module modules/mod_authz_host.so
-LoadModule authz_owner_module modules/mod_authz_owner.so
-LoadModule authz_user_module modules/mod_authz_user.so
-LoadModule autoindex_module modules/mod_autoindex.so
-LoadModule cache_module modules/mod_cache.so
-LoadModule cache_disk_module modules/mod_cache_disk.so
-LoadModule data_module modules/mod_data.so
-LoadModule dbd_module modules/mod_dbd.so
-LoadModule deflate_module modules/mod_deflate.so
-LoadModule dir_module modules/mod_dir.so
-LoadModule dumpio_module modules/mod_dumpio.so
-LoadModule echo_module modules/mod_echo.so
-LoadModule env_module modules/mod_env.so
-LoadModule expires_module modules/mod_expires.so
-LoadModule ext_filter_module modules/mod_ext_filter.so
-LoadModule filter_module modules/mod_filter.so
-LoadModule headers_module modules/mod_headers.so
-LoadModule include_module modules/mod_include.so
-LoadModule info_module modules/mod_info.so
-LoadModule log_config_module modules/mod_log_config.so
-LoadModule logio_module modules/mod_logio.so
-LoadModule mime_magic_module modules/mod_mime_magic.so
-LoadModule mime_module modules/mod_mime.so
-LoadModule negotiation_module modules/mod_negotiation.so
-LoadModule remoteip_module modules/mod_remoteip.so
-LoadModule reqtimeout_module modules/mod_reqtimeout.so
-LoadModule rewrite_module modules/mod_rewrite.so
-LoadModule setenvif_module modules/mod_setenvif.so
-LoadModule slotmem_plain_module modules/mod_slotmem_plain.so
-LoadModule slotmem_shm_module modules/mod_slotmem_shm.so
-LoadModule socache_dbm_module modules/mod_socache_dbm.so
-LoadModule socache_memcache_module modules/mod_socache_memcache.so
-LoadModule socache_shmcb_module modules/mod_socache_shmcb.so
-LoadModule status_module modules/mod_status.so
-LoadModule substitute_module modules/mod_substitute.so
-LoadModule suexec_module modules/mod_suexec.so
-LoadModule unique_id_module modules/mod_unique_id.so
-LoadModule unixd_module modules/mod_unixd.so
-LoadModule userdir_module modules/mod_userdir.so
-LoadModule version_module modules/mod_version.so
-LoadModule vhost_alias_module modules/mod_vhost_alias.so
-
-#LoadModule buffer_module modules/mod_buffer.so
-#LoadModule watchdog_module modules/mod_watchdog.so
-#LoadModule heartbeat_module modules/mod_heartbeat.so
-#LoadModule heartmonitor_module modules/mod_heartmonitor.so
-#LoadModule usertrack_module modules/mod_usertrack.so
-#LoadModule dialup_module modules/mod_dialup.so
-#LoadModule charset_lite_module modules/mod_charset_lite.so
-#LoadModule log_debug_module modules/mod_log_debug.so
-#LoadModule ratelimit_module modules/mod_ratelimit.so
-#LoadModule reflector_module modules/mod_reflector.so
-#LoadModule request_module modules/mod_request.so
-#LoadModule sed_module modules/mod_sed.so
-#LoadModule speling_module modules/mod_speling.so
-
-PASTECONFIGURATIONFILE
-cat > /etc/httpd/conf.modules.d/00-dav.conf << PASTECONFIGURATIONFILE
-LoadModule dav_module modules/mod_dav.so
-LoadModule dav_fs_module modules/mod_dav_fs.so
-LoadModule dav_lock_module modules/mod_dav_lock.so
-PASTECONFIGURATIONFILE
-cat > /etc/httpd/conf.modules.d/00-lua.conf << PASTECONFIGURATIONFILE
-LoadModule lua_module modules/mod_lua.so
-PASTECONFIGURATIONFILE
-cat > /etc/httpd/conf.modules.d/00-mpm.conf << PASTECONFIGURATIONFILE
-# Select the MPM module which should be used by uncommenting exactly
-# one of the following LoadModule lines:
-
-# prefork MPM: Implements a non-threaded, pre-forking web server
-# See: http://httpd.apache.org/docs/2.4/mod/prefork.html
-LoadModule mpm_prefork_module modules/mod_mpm_prefork.so
-
-# worker MPM: Multi-Processing Module implementing a hybrid
-# multi-threaded multi-process web server
-# See: http://httpd.apache.org/docs/2.4/mod/worker.html
-#
-#LoadModule mpm_worker_module modules/mod_mpm_worker.so
-
-# event MPM: A variant of the worker MPM with the goal of consuming
-# threads only for connections with active processing
-# See: http://httpd.apache.org/docs/2.4/mod/event.html
-#
-#LoadModule mpm_event_module modules/mod_mpm_event.so
-
-PASTECONFIGURATIONFILE
-cat > /etc/httpd/conf.modules.d/00-proxy.conf << PASTECONFIGURATIONFILE
-# This file configures all the proxy modules:
-LoadModule proxy_module modules/mod_proxy.so
-LoadModule lbmethod_bybusyness_module modules/mod_lbmethod_bybusyness.so
-LoadModule lbmethod_byrequests_module modules/mod_lbmethod_byrequests.so
-LoadModule lbmethod_bytraffic_module modules/mod_lbmethod_bytraffic.so
-LoadModule lbmethod_heartbeat_module modules/mod_lbmethod_heartbeat.so
-LoadModule proxy_ajp_module modules/mod_proxy_ajp.so
-LoadModule proxy_balancer_module modules/mod_proxy_balancer.so
-LoadModule proxy_connect_module modules/mod_proxy_connect.so
-LoadModule proxy_express_module modules/mod_proxy_express.so
-LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
-LoadModule proxy_fdpass_module modules/mod_proxy_fdpass.so
-LoadModule proxy_ftp_module modules/mod_proxy_ftp.so
-LoadModule proxy_http_module modules/mod_proxy_http.so
-LoadModule proxy_scgi_module modules/mod_proxy_scgi.so
-LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so
-PASTECONFIGURATIONFILE
-cat > /etc/httpd/conf.modules.d/00-ssl.conf << PASTECONFIGURATIONFILE
-LoadModule ssl_module modules/mod_ssl.so
-PASTECONFIGURATIONFILE
-cat > /etc/httpd/conf.modules.d/00-systemd.conf << PASTECONFIGURATIONFILE
-# This file configures systemd module:
-LoadModule systemd_module modules/mod_systemd.so
-PASTECONFIGURATIONFILE
-cat > /etc/httpd/conf.modules.d/01-cgi.conf << PASTECONFIGURATIONFILE
-# This configuration file loads a CGI module appropriate to the MPM
-# which has been configured in 00-mpm.conf.  mod_cgid should be used
-# with a threaded MPM; mod_cgi with the prefork MPM.
-
-<IfModule mpm_worker_module>
-   LoadModule cgid_module modules/mod_cgid.so
-</IfModule>
-<IfModule mpm_event_module>
-   LoadModule cgid_module modules/mod_cgid.so
-</IfModule>
-<IfModule mpm_prefork_module>
-   LoadModule cgi_module modules/mod_cgi.so
-</IfModule>
-
-PASTECONFIGURATIONFILE
-cat > /etc/httpd/conf.modules.d/20-macro.conf << PASTECONFIGURATIONFILE
-LoadModule macro_module modules/mod_macro.so
-PASTECONFIGURATIONFILE
+mkdir -p /usr
+mkdir -p /usr/local
+mkdir -p /usr/local/sbin
 cat > /etc/httpd/conf/httpd.conf << PASTECONFIGURATIONFILE
 ServerRoot "/etc/httpd"
 
@@ -994,6 +500,507 @@ cat > /etc/httpd/conf/magic << PASTECONFIGURATIONFILE
 4   string      mdat        video/quicktime
 
 PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.d/vhost.conf << PASTECONFIGURATIONFILE
+
+
+
+
+<Macro VHost \${domain}>
+
+<VirtualHost *:80 *:443>
+ServerName \${domain}
+ServerAlias \${domain}.
+
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
+
+
+ErrorLog "logs/\${domain}-error_log"
+#ForensicLog logs/\${domain}-forensic_log
+LogLevel warn
+<IfModule log_config_module>
+	CustomLog "logs/\${domain}-access_log" paranoid
+</IfModule>
+
+SSLEngine on
+SSLCertificateFile /etc/letsencrypt/live/\${domain}/cert.pem
+SSLCertificateKeyFile /etc/letsencrypt/live/\${domain}/privkey.pem
+SSLCertificateChainFile /etc/letsencrypt/live/\${domain}/chain.pem
+
+SSLCompression off
+
+# test stapling via:
+# echo | openssl s_client -servername \${domain} -connect \${domain}:443 -tls1_2  -tlsextdebug  -status | grep "OCSP response: no response sent" && echo FAIL || echo OK
+SSLUseStapling on
+SSLStaplingResponderTimeout 2
+SSLStaplingReturnResponderErrors off
+SSLStaplingFakeTryLater off
+SSLStaplingStandardCacheTimeout 86400
+
+# test headers via:
+# testssl \${domain}
+# curl -v https://\${domain}
+Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" env=HTTPS
+Header always set X-Frame-Options "DENY"
+Header always set X-Content-Type-Options "nosniff"
+Header always set Content-Security-Policy "upgrade-insecure-requests;"
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Feature-Policy "geolocation 'none'; midi 'none'; notifications 'none'; push 'none'; sync-xhr 'none'; microphone 'none'; camera 'none'; magnetometer 'none'; gyroscope 'none'; speaker 'none'; vibrate 'none'; fullscreen 'self'; payment 'none';"
+Header always set Referrer-Policy "no-referrer"
+Header always unset "X-Powered-By"
+Header unset "X-Powered-By"
+Header always unset "Server"
+Header unset "Server"
+
+DocumentRoot "/var/www/html/\${domain}"
+
+<Directory "/var/www/html/\${domain}">
+	AllowOverride None
+	Require all granted
+</Directory>
+
+<IfModule dir_module>
+    DirectoryIndex index.html
+</IfModule>
+
+<Files ".ht*">
+	Require all denied
+</Files>
+
+
+<Files ~ "\\.(cgi|shtml|phtml|php3?)\$">
+    SSLOptions +StdEnvVars
+</Files>
+<Directory "/var/www/cgi-bin">
+    SSLOptions +StdEnvVars
+</Directory>
+
+BrowserMatch "MSIE [2-5]" \\
+         nokeepalive ssl-unclean-shutdown \\
+         downgrade-1.0 force-response-1.0
+
+</VirtualHost>               
+
+</Macro>
+
+
+
+
+
+
+
+
+
+<Macro VHostHT \${domain}>
+
+<VirtualHost *:80 *:443>
+ServerName \${domain}
+ServerAlias \${domain}.
+
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
+
+
+ErrorLog "logs/\${domain}-error_log"
+#ForensicLog logs/\${domain}-forensic_log
+LogLevel warn
+<IfModule log_config_module>
+	CustomLog "logs/\${domain}-access_log" paranoid
+</IfModule>
+
+SSLEngine on
+SSLCertificateFile /etc/letsencrypt/live/\${domain}/cert.pem
+SSLCertificateKeyFile /etc/letsencrypt/live/\${domain}/privkey.pem
+SSLCertificateChainFile /etc/letsencrypt/live/\${domain}/chain.pem
+
+SSLCompression off
+
+# test stapling via:
+# echo | openssl s_client -servername \${domain} -connect \${domain}:443 -tls1_2  -tlsextdebug  -status | grep "OCSP response: no response sent" && echo FAIL || echo OK
+SSLUseStapling on
+SSLStaplingResponderTimeout 2
+SSLStaplingReturnResponderErrors off
+SSLStaplingFakeTryLater off
+SSLStaplingStandardCacheTimeout 86400
+
+# test headers via:
+# testssl \${domain}
+# curl -v https://\${domain}
+Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" env=HTTPS
+Header always set X-Frame-Options DENY
+Header always set X-Content-Type-Options nosniff
+Header always set Content-Security-Policy "upgrade-insecure-requests;"
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Feature-Policy "geolocation 'none'; midi 'none'; notifications 'none'; push 'none'; sync-xhr 'none'; microphone 'none'; camera 'none'; magnetometer 'none'; gyroscope 'none'; speaker 'none'; vibrate 'none'; fullscreen 'self'; payment 'none';"
+Header always set Referrer-Policy no-referrer
+Header always unset "X-Powered-By"
+Header unset "X-Powered-By"
+Header always unset "Server"
+Header unset "Server"
+
+DocumentRoot "/var/www/html/\${domain}"
+
+<Directory "/var/www/html/\${domain}">
+	AllowOverride Options=Indexes AuthConfig
+	Require all granted
+</Directory>
+
+<IfModule dir_module>
+    DirectoryIndex index.html
+</IfModule>
+
+<Files ".ht*">
+	Require all denied
+</Files>
+
+
+<Files ~ "\\.(cgi|shtml|phtml|php3?)\$">
+    SSLOptions +StdEnvVars
+</Files>
+<Directory "/var/www/cgi-bin">
+    SSLOptions +StdEnvVars
+</Directory>
+
+BrowserMatch "MSIE [2-5]" \\
+         nokeepalive ssl-unclean-shutdown \\
+         downgrade-1.0 force-response-1.0
+
+</VirtualHost>               
+
+</Macro>
+
+
+
+
+
+
+
+
+
+
+
+<Macro noSSLVHost \${domain}>
+
+<VirtualHost *:80>
+ServerName \${domain}
+ServerAlias \${domain}.
+
+DocumentRoot "/var/www/html/\${domain}"
+
+<Directory "/var/www/html/\${domain}">
+	AllowOverride None
+	Require all granted
+</Directory>
+
+<IfModule dir_module>
+    DirectoryIndex index.html
+</IfModule>
+
+<Files ".ht*">
+	Require all denied
+</Files>
+
+</VirtualHost>
+
+</Macro>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<Macro redirVHost \${domain} \${rdomain}>
+
+<VirtualHost *:80 *:443>
+ServerName \${domain}
+ServerAlias \${domain}.
+
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
+RewriteCond %{REQUEST_URI} !\\.well-known/acme-challenge/.*
+RewriteRule ^ https://\${rdomain}%{REQUEST_URI} [END,NE,R=permanent]
+
+ErrorLog "logs/\${domain}-error_log"
+#ForensicLog logs/\${domain}-forensic_log
+LogLevel warn
+<IfModule log_config_module>
+	CustomLog "logs/\${domain}-access_log" paranoid
+</IfModule>
+
+SSLEngine on
+SSLCertificateFile /etc/letsencrypt/live/\${domain}/cert.pem
+SSLCertificateKeyFile /etc/letsencrypt/live/\${domain}/privkey.pem
+SSLCertificateChainFile /etc/letsencrypt/live/\${domain}/chain.pem
+
+
+
+# test stapling via:
+# echo | openssl s_client -servername \${domain} -connect \${domain}:443 -tls1_2  -tlsextdebug  -status | grep "OCSP response: no response sent" && echo FAIL || echo OK
+SSLUseStapling on
+SSLStaplingResponderTimeout 2
+SSLStaplingReturnResponderErrors off
+SSLStaplingFakeTryLater off
+SSLStaplingStandardCacheTimeout 86400
+
+# test headers via:
+# testssl \${domain}
+# curl -v https://\${domain}
+Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" env=HTTPS
+Header always set X-Frame-Options DENY
+Header always set X-Content-Type-Options nosniff
+Header always set Content-Security-Policy "upgrade-insecure-requests;"
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Feature-Policy "geolocation 'none'; midi 'none'; notifications 'none'; push 'none'; sync-xhr 'none'; microphone 'none'; camera 'none'; magnetometer 'none'; gyroscope 'none'; speaker 'none'; vibrate 'none'; fullscreen 'self'; payment 'none';"
+Header always set Referrer-Policy no-referrer
+Header always unset "X-Powered-By"
+Header unset "X-Powered-By"
+Header always unset "Server"
+Header unset "Server"
+
+
+
+
+DocumentRoot "/var/www/html/\${domain}"
+
+<Directory "/var/www/html/\${domain}">
+	AllowOverride None
+	Require all granted
+</Directory>
+
+<IfModule dir_module>
+    DirectoryIndex index.html
+</IfModule>
+
+<Files ".ht*">
+	Require all denied
+</Files>
+
+</VirtualHost>               
+
+</Macro>
+
+
+# INSERT VHOSTS HERE
+
+#Use noSSLVHost example.com
+
+
+UndefMacro VHost
+UndefMacro VHostHT
+UndefMacro noSSLVHost
+UndefMacro redirVHost
+
+
+
+PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.d/ssl.conf << PASTECONFIGURATIONFILE
+Listen 443 https
+
+SSLPassPhraseDialog exec:/usr/libexec/httpd-ssl-pass-dialog
+
+SSLSessionCache         shmcb:/run/httpd/sslcache(512000)
+SSLSessionCacheTimeout  300
+
+SSLRandomSeed startup file:/dev/urandom  256
+SSLRandomSeed connect builtin
+
+SSLCryptoDevice builtin
+
+# openssl ciphers -v 'ALL:!eNULL:!aNULL:!LOW:!MEDIUM:!DES:!3DES:!RC4:!MD5:!RSA:!SHA1:@STRENGTH'
+SSLCipherSuite ALL:!eNULL:!aNULL:!LOW:!MEDIUM:!DES:!3DES:!RC4:!MD5:!RSA:!SHA1:@STRENGTH
+
+# NOTE: if something goes down switch to these (highest securirty)
+#SSLCipherSuite ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-GCM-SHA256
+
+SSLProtocol All -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
+SSLHonorCipherOrder On
+Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+Header always set X-Frame-Options DENY
+Header always set X-Content-Type-Options nosniff
+Header always set Content-Security-Policy "upgrade-insecure-requests;"
+SSLCompression off
+SSLUseStapling on
+SSLStaplingCache "shmcb:logs/stapling-cache(150000)"
+# Requires Apache >= 2.4.11
+#SSLSessionTickets Off
+
+
+PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.modules.d/00-proxy.conf << PASTECONFIGURATIONFILE
+# This file configures all the proxy modules:
+LoadModule proxy_module modules/mod_proxy.so
+LoadModule lbmethod_bybusyness_module modules/mod_lbmethod_bybusyness.so
+LoadModule lbmethod_byrequests_module modules/mod_lbmethod_byrequests.so
+LoadModule lbmethod_bytraffic_module modules/mod_lbmethod_bytraffic.so
+LoadModule lbmethod_heartbeat_module modules/mod_lbmethod_heartbeat.so
+LoadModule proxy_ajp_module modules/mod_proxy_ajp.so
+LoadModule proxy_balancer_module modules/mod_proxy_balancer.so
+LoadModule proxy_connect_module modules/mod_proxy_connect.so
+LoadModule proxy_express_module modules/mod_proxy_express.so
+LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
+LoadModule proxy_fdpass_module modules/mod_proxy_fdpass.so
+LoadModule proxy_ftp_module modules/mod_proxy_ftp.so
+LoadModule proxy_http_module modules/mod_proxy_http.so
+LoadModule proxy_scgi_module modules/mod_proxy_scgi.so
+LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so
+PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.modules.d/00-dav.conf << PASTECONFIGURATIONFILE
+LoadModule dav_module modules/mod_dav.so
+LoadModule dav_fs_module modules/mod_dav_fs.so
+LoadModule dav_lock_module modules/mod_dav_lock.so
+PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.modules.d/00-ssl.conf << PASTECONFIGURATIONFILE
+LoadModule ssl_module modules/mod_ssl.so
+PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.modules.d/01-cgi.conf << PASTECONFIGURATIONFILE
+# This configuration file loads a CGI module appropriate to the MPM
+# which has been configured in 00-mpm.conf.  mod_cgid should be used
+# with a threaded MPM; mod_cgi with the prefork MPM.
+
+<IfModule mpm_worker_module>
+   LoadModule cgid_module modules/mod_cgid.so
+</IfModule>
+<IfModule mpm_event_module>
+   LoadModule cgid_module modules/mod_cgid.so
+</IfModule>
+<IfModule mpm_prefork_module>
+   LoadModule cgi_module modules/mod_cgi.so
+</IfModule>
+
+PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.modules.d/00-mpm.conf << PASTECONFIGURATIONFILE
+# Select the MPM module which should be used by uncommenting exactly
+# one of the following LoadModule lines:
+
+# prefork MPM: Implements a non-threaded, pre-forking web server
+# See: http://httpd.apache.org/docs/2.4/mod/prefork.html
+LoadModule mpm_prefork_module modules/mod_mpm_prefork.so
+
+# worker MPM: Multi-Processing Module implementing a hybrid
+# multi-threaded multi-process web server
+# See: http://httpd.apache.org/docs/2.4/mod/worker.html
+#
+#LoadModule mpm_worker_module modules/mod_mpm_worker.so
+
+# event MPM: A variant of the worker MPM with the goal of consuming
+# threads only for connections with active processing
+# See: http://httpd.apache.org/docs/2.4/mod/event.html
+#
+#LoadModule mpm_event_module modules/mod_mpm_event.so
+
+PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.modules.d/00-base.conf << PASTECONFIGURATIONFILE
+#
+# This file loads most of the modules included with the Apache HTTP
+# Server itself.
+#
+
+LoadModule access_compat_module modules/mod_access_compat.so
+LoadModule actions_module modules/mod_actions.so
+LoadModule alias_module modules/mod_alias.so
+LoadModule allowmethods_module modules/mod_allowmethods.so
+LoadModule auth_basic_module modules/mod_auth_basic.so
+LoadModule auth_digest_module modules/mod_auth_digest.so
+LoadModule authn_anon_module modules/mod_authn_anon.so
+LoadModule authn_core_module modules/mod_authn_core.so
+LoadModule authn_dbd_module modules/mod_authn_dbd.so
+LoadModule authn_dbm_module modules/mod_authn_dbm.so
+LoadModule authn_file_module modules/mod_authn_file.so
+LoadModule authn_socache_module modules/mod_authn_socache.so
+LoadModule authz_core_module modules/mod_authz_core.so
+LoadModule authz_dbd_module modules/mod_authz_dbd.so
+LoadModule authz_dbm_module modules/mod_authz_dbm.so
+LoadModule authz_groupfile_module modules/mod_authz_groupfile.so
+LoadModule authz_host_module modules/mod_authz_host.so
+LoadModule authz_owner_module modules/mod_authz_owner.so
+LoadModule authz_user_module modules/mod_authz_user.so
+LoadModule autoindex_module modules/mod_autoindex.so
+LoadModule cache_module modules/mod_cache.so
+LoadModule cache_disk_module modules/mod_cache_disk.so
+LoadModule data_module modules/mod_data.so
+LoadModule dbd_module modules/mod_dbd.so
+LoadModule deflate_module modules/mod_deflate.so
+LoadModule dir_module modules/mod_dir.so
+LoadModule dumpio_module modules/mod_dumpio.so
+LoadModule echo_module modules/mod_echo.so
+LoadModule env_module modules/mod_env.so
+LoadModule expires_module modules/mod_expires.so
+LoadModule ext_filter_module modules/mod_ext_filter.so
+LoadModule filter_module modules/mod_filter.so
+LoadModule headers_module modules/mod_headers.so
+LoadModule include_module modules/mod_include.so
+LoadModule info_module modules/mod_info.so
+LoadModule log_config_module modules/mod_log_config.so
+LoadModule logio_module modules/mod_logio.so
+LoadModule mime_magic_module modules/mod_mime_magic.so
+LoadModule mime_module modules/mod_mime.so
+LoadModule negotiation_module modules/mod_negotiation.so
+LoadModule remoteip_module modules/mod_remoteip.so
+LoadModule reqtimeout_module modules/mod_reqtimeout.so
+LoadModule rewrite_module modules/mod_rewrite.so
+LoadModule setenvif_module modules/mod_setenvif.so
+LoadModule slotmem_plain_module modules/mod_slotmem_plain.so
+LoadModule slotmem_shm_module modules/mod_slotmem_shm.so
+LoadModule socache_dbm_module modules/mod_socache_dbm.so
+LoadModule socache_memcache_module modules/mod_socache_memcache.so
+LoadModule socache_shmcb_module modules/mod_socache_shmcb.so
+LoadModule status_module modules/mod_status.so
+LoadModule substitute_module modules/mod_substitute.so
+LoadModule suexec_module modules/mod_suexec.so
+LoadModule unique_id_module modules/mod_unique_id.so
+LoadModule unixd_module modules/mod_unixd.so
+LoadModule userdir_module modules/mod_userdir.so
+LoadModule version_module modules/mod_version.so
+LoadModule vhost_alias_module modules/mod_vhost_alias.so
+
+#LoadModule buffer_module modules/mod_buffer.so
+#LoadModule watchdog_module modules/mod_watchdog.so
+#LoadModule heartbeat_module modules/mod_heartbeat.so
+#LoadModule heartmonitor_module modules/mod_heartmonitor.so
+#LoadModule usertrack_module modules/mod_usertrack.so
+#LoadModule dialup_module modules/mod_dialup.so
+#LoadModule charset_lite_module modules/mod_charset_lite.so
+#LoadModule log_debug_module modules/mod_log_debug.so
+#LoadModule ratelimit_module modules/mod_ratelimit.so
+#LoadModule reflector_module modules/mod_reflector.so
+#LoadModule request_module modules/mod_request.so
+#LoadModule sed_module modules/mod_sed.so
+#LoadModule speling_module modules/mod_speling.so
+
+PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.modules.d/00-lua.conf << PASTECONFIGURATIONFILE
+LoadModule lua_module modules/mod_lua.so
+PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.modules.d/00-systemd.conf << PASTECONFIGURATIONFILE
+# This file configures systemd module:
+LoadModule systemd_module modules/mod_systemd.so
+PASTECONFIGURATIONFILE
+cat > /etc/httpd/conf.modules.d/20-macro.conf << PASTECONFIGURATIONFILE
+LoadModule macro_module modules/mod_macro.so
+PASTECONFIGURATIONFILE
+cat > /var/www/html/blank/index.html << PASTECONFIGURATIONFILE
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title></title><meta name="robots" content="noindex, nofollow, noarchive"><meta http-equiv="content-type" content="text/html; charset=us-ascii"></head><body>This page intentionally left (almost) blank.</body></html>
+PASTECONFIGURATIONFILE
+cat > /var/www/html/blank/robots.txt << PASTECONFIGURATIONFILE
+User-agent: *
+Disallow: /
+PASTECONFIGURATIONFILE
 cat > /usr/local/sbin/el7-letsencrypt_delete << PASTECONFIGURATIONFILE
 #!/bin/bash
 if [ \$# -eq 0 ]; then
@@ -1005,6 +1012,18 @@ if [ \$# -eq 0 ]; then
 fi
 domain=\${1}
 certbot delete --cert-name "\${domain}"
+PASTECONFIGURATIONFILE
+cat > /usr/local/sbin/el7-letsencrypt_setup << PASTECONFIGURATIONFILE
+#!/bin/bash
+if [ \$# -eq 0 ]; then
+	echo "Gets a Let's Encrypt certificate for a domain"
+	echo
+	echo "usage: \${0} <domain>"
+	echo
+	exit 1
+fi
+domain=\${1}
+certbot certonly -n --webroot -w "/var/www/html/\${domain}" -d "\${domain}" --register-unsafely-without-email --rsa-key-size 4096 --agree-tos
 PASTECONFIGURATIONFILE
 cat > /usr/local/sbin/el7-letsencrypt_fix << PASTECONFIGURATIONFILE
 #!/bin/bash
@@ -1019,25 +1038,6 @@ ln -s ../\$(ls ../archive/\${domain}/fullchain*.pem | tail -n1) \${domain}/fullc
 rm -f \${domain}/privkey.pem
 ln -s ../\$(ls ../archive/\${domain}/privkey*.pem | tail -n1) \${domain}/privkey.pem
 done
-PASTECONFIGURATIONFILE
-cat > /usr/local/sbin/el7-letsencrypt_setup << PASTECONFIGURATIONFILE
-#!/bin/bash
-if [ \$# -eq 0 ]; then
-	echo "Gets a Let's Encrypt certificate for a domain"
-	echo
-	echo "usage: \${0} <domain>"
-	echo
-	exit 1
-fi
-domain=\${1}
-certbot certonly -n --webroot -w "/var/www/html/\${domain}" -d "\${domain}" --register-unsafely-without-email --rsa-key-size 4096 --agree-tos
-PASTECONFIGURATIONFILE
-cat > /var/www/html/blank/index.html << PASTECONFIGURATIONFILE
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title></title><meta name="robots" content="noindex, nofollow, noarchive"><meta http-equiv="content-type" content="text/html; charset=us-ascii"></head><body>This page intentionally left (almost) blank.</body></html>
-PASTECONFIGURATIONFILE
-cat > /var/www/html/blank/robots.txt << PASTECONFIGURATIONFILE
-User-agent: *
-Disallow: /
 PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
 

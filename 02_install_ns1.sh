@@ -6,36 +6,20 @@ yum -y install bind bind-utils #haveged
 # systemctl enable haveged
 # COPY CONFIGURATION FILES
 mkdir -p /etc
-mkdir -p /etc/logrotate.d
 mkdir -p /etc/named
+mkdir -p /etc/logrotate.d
+mkdir -p /var
+mkdir -p /var/named
 mkdir -p /usr
 mkdir -p /usr/local
 mkdir -p /usr/local/sbin
-mkdir -p /var
-mkdir -p /var/named
-cat > /etc/logrotate.d/named << PASTECONFIGURATIONFILE
-/var/named/data/named.run {
-    missingok
-    su named named
-    create 0644 named named
-    postrotate
-        /usr/bin/systemctl reload named.service > /dev/null 2>&1 || true
-        /usr/bin/systemctl reload named-chroot.service > /dev/null 2>&1 || true
-        /usr/bin/systemctl reload named-sdb.service > /dev/null 2>&1 || true
-        /usr/bin/systemctl reload named-sdb-chroot.service > /dev/null 2>&1 || true
-        /usr/bin/systemctl reload named-pkcs11.service > /dev/null 2>&1 || true
-    endscript
-}
-
-/var/log/named/*.log {
-  create 0644 named named
-  missingok
-  notifempty
-  sharedscripts
-  postrotate
-    /usr/sbin/rndc reconfig > /dev/null 2>/dev/null || true
-  endscript
-}
+cat > /etc/named/zones << PASTECONFIGURATIONFILE
+/*
+zone "example.com" IN {
+	type master;
+	file "example.com.signed";
+};
+*/
 PASTECONFIGURATIONFILE
 cat > /etc/named.conf << PASTECONFIGURATIONFILE
 options {
@@ -115,35 +99,62 @@ include "/etc/named/zones";
 
 
 PASTECONFIGURATIONFILE
-cat > /etc/named/zones << PASTECONFIGURATIONFILE
-/*
-zone "example.com" IN {
-	type master;
-	file "example.com.signed";
-};
-*/
-PASTECONFIGURATIONFILE
-cat > /usr/local/sbin/el7-bind_config << PASTECONFIGURATIONFILE
-#!/bin/bash
-if [ \$# -ne 2 ]; then
-	echo "Configure BIND ns IPs"
-	echo
-	echo "usage: \${0} <IP of ns1> <IP of ns2>"
-	echo
-	exit 1
-fi
-ns1="\${1}"
-ns2="\${2}"
-sed '/listen-on/ s/localhost/any/' -i /etc/named.conf
-sed '/allow-query/ s/localhost/any/' -i /etc/named.conf
-sed '/allow-update/ s/none/'\${ns1}'/' -i /etc/named.conf
-sed '/allow-notify/ s/none/'\${ns1}'/' -i /etc/named.conf
-sed '/allow-transfer/ s/none/'\${ns2}'/' -i /etc/named.conf
-sed '/masters/ s/none/'\${ns1}'/' -i /etc/named/zones
+cat > /etc/logrotate.d/named << PASTECONFIGURATIONFILE
+/var/named/data/named.run {
+    missingok
+    su named named
+    create 0644 named named
+    postrotate
+        /usr/bin/systemctl reload named.service > /dev/null 2>&1 || true
+        /usr/bin/systemctl reload named-chroot.service > /dev/null 2>&1 || true
+        /usr/bin/systemctl reload named-sdb.service > /dev/null 2>&1 || true
+        /usr/bin/systemctl reload named-sdb-chroot.service > /dev/null 2>&1 || true
+        /usr/bin/systemctl reload named-pkcs11.service > /dev/null 2>&1 || true
+    endscript
+}
 
-firewall-cmd --permanent --add-service=dns
-firewall-cmd --reload
-firewall-cmd --list-all # list rules [optional]
+/var/log/named/*.log {
+  create 0644 named named
+  missingok
+  notifempty
+  sharedscripts
+  postrotate
+    /usr/sbin/rndc reconfig > /dev/null 2>/dev/null || true
+  endscript
+}
+PASTECONFIGURATIONFILE
+cat > /var/named/example.com << PASTECONFIGURATIONFILE
+\$ORIGIN example.com
+\$TTL 1d
+@ IN SOA ns1.example.com. info.example.com. (
+	2019011301 ; serial
+	12h ; refresh
+	1h ; retry
+	4w ; expire
+	1d ; nx ttl
+)
+
+@	IN NS ns1.example.com.
+@	IN NS ns2.example.com.
+ns1	IN A 1.1.1.1
+ns1	IN AAAA 0:0:0:0:0:ffff:404:404
+ns2	IN A 2.2.2.2
+ns2	IN AAAA 0:0:0:0:0:ffff:404:404
+
+@	IN CAA 128 issue "letsencrypt.org"
+
+@	IN MX 1 mx.example.com.
+@	IN TXT "v=spf1 mx -all"
+_dmarc  IN TXT "v=DMARC1; p=reject; rua=mailto:dmarc-asjhgoeahfgsdf@example.com; ruf=mailto:dmarc-asfjsafjsadf@example.comi; fo=1;"
+
+*._report._dmarc IN TXT "v=DMARC1;"
+
+@	IN A 3.3.3.3
+@	IN AAAA 0:0:0:0:0:ffff:404:404
+mx	IN A 4.4.4.4
+mx	IN AAAA 0:0:0:0:0:ffff:404:404
+
+_mta-sts IN TXT "v=STSv1; id=2019011301"
 
 PASTECONFIGURATIONFILE
 cat > /usr/local/sbin/el7-dnssec_setup << PASTECONFIGURATIONFILE
@@ -183,38 +194,27 @@ echo "*********************************************"
 cat "dsset-\${zone}."
 
 PASTECONFIGURATIONFILE
-cat > /var/named/example.com << PASTECONFIGURATIONFILE
-\$ORIGIN example.com
-\$TTL 1d
-@ IN SOA ns1.example.com. info.example.com. (
-	2019011301 ; serial
-	12h ; refresh
-	1h ; retry
-	4w ; expire
-	1d ; nx ttl
-)
+cat > /usr/local/sbin/el7-bind_config << PASTECONFIGURATIONFILE
+#!/bin/bash
+if [ \$# -ne 2 ]; then
+	echo "Configure BIND ns IPs"
+	echo
+	echo "usage: \${0} <IP of ns1> <IP of ns2>"
+	echo
+	exit 1
+fi
+ns1="\${1}"
+ns2="\${2}"
+sed '/listen-on/ s/localhost/any/' -i /etc/named.conf
+sed '/allow-query/ s/localhost/any/' -i /etc/named.conf
+sed '/allow-update/ s/none/'\${ns1}'/' -i /etc/named.conf
+sed '/allow-notify/ s/none/'\${ns1}'/' -i /etc/named.conf
+sed '/allow-transfer/ s/none/'\${ns2}'/' -i /etc/named.conf
+sed '/masters/ s/none/'\${ns1}'/' -i /etc/named/zones
 
-@	IN NS ns1.example.com.
-@	IN NS ns2.example.com.
-ns1	IN A 1.1.1.1
-ns1	IN AAAA 0:0:0:0:0:ffff:404:404
-ns2	IN A 2.2.2.2
-ns2	IN AAAA 0:0:0:0:0:ffff:404:404
-
-@	IN CAA 128 issue "letsencrypt.org"
-
-@	IN MX 1 mx.example.com.
-@	IN TXT "v=spf1 mx -all"
-_dmarc  IN TXT "v=DMARC1; p=reject; rua=mailto:dmarc-asjhgoeahfgsdf@example.com; ruf=mailto:dmarc-asfjsafjsadf@example.comi; fo=1;"
-
-*._report._dmarc IN TXT "v=DMARC1;"
-
-@	IN A 3.3.3.3
-@	IN AAAA 0:0:0:0:0:ffff:404:404
-mx	IN A 4.4.4.4
-mx	IN AAAA 0:0:0:0:0:ffff:404:404
-
-_mta-sts IN TXT "v=STSv1; id=2019011301"
+firewall-cmd --permanent --add-service=dns
+firewall-cmd --reload
+firewall-cmd --list-all # list rules [optional]
 
 PASTECONFIGURATIONFILE
 # COPY CONFIGURATION FILES
