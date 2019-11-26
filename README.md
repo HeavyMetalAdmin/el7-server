@@ -9,7 +9,7 @@ Tested on/with:
 - Kimsufi Server
 - EDIS KVM
 - Hetzner Cloud Servers
-- VPSCHEAP NET
+- VPSCHEAP NET (**Has problems!** Uses OpenVZ and host doesn't have `nt_conntrack` kernel module needed for firewalld.)
 
 ## Base install
 
