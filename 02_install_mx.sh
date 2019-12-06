@@ -223,14 +223,13 @@ mail_location = maildir:/home/vmail/%d/%n
 
 protocols = pop3
 
-passdb {
-	driver = passwd-file
-	args = /etc/dovecot/passwd
-}
 userdb {
-	driver = passwd-file
-	args = /etc/dovecot/users
-	default_fields = uid=vmail gid=vmail home=/home/vmail/%u
+   driver = checkpassword
+   args = /usr/local/bin/fakesasl.sh
+}
+passdb {
+   driver = checkpassword
+   args = /usr/local/bin/fakesasl.sh
 }
 
 service auth {
@@ -291,21 +290,23 @@ PASTECONFIGURATIONFILE
 base64 -d > /etc/dovecot/passwd << PASTECONFIGURATIONFILE
 PASTECONFIGURATIONFILE
 cat > /etc/postfix/main.cf << PASTECONFIGURATIONFILE
-smtpd_banner = \$myhostname ESMTP
+mtpd_banner = $myhostname ESMTP
 biff = no
 
 # stuff
-myhostname = mx.example.com
-myorigin = \$myhostname
-#mydestination = localhost, localhost.localdomain
+myhostname = mail.socamail.com
+myorigin = $myhostname
+mydestination = regexp:/etc/postfix/vhosts
 relayhost =
-mynetworks = 127.0.0.0/8
+mynetworks = 0.0.0.0
 mailbox_size_limit = 0
 home_mailbox = Maildir/
+luser_relay = mailcatcher
+local_recipient_maps =
 
-virtual_mailbox_domains = /etc/postfix/vhosts
+virtual_mailbox_domains = regexp:/etc/postfix/vhosts
 virtual_mailbox_base = /home/vmail
-virtual_mailbox_maps = hash:/etc/postfix/vmaps
+virtual_mailbox_maps = regexp:/etc/postfix/vmaps
 virtual_minimum_uid = 1000
 virtual_uid_maps = static:5000
 virtual_gid_maps = static:5000
@@ -315,6 +316,7 @@ inet_interfaces = all
 
 # prevent leaking valid e-mail addresses
 disable_vrfy_command = yes
+
 # don't allow illegal syntax in MAIL FROM and RCPT TO
 strict_rfc821_envelopes = yes
 
@@ -328,92 +330,15 @@ append_dot_mydomain = no
 bounce_queue_lifetime = 1h
 maximal_queue_lifetime = 1h
 
-# incoming
-smtpd_tls_cert_file = /etc/letsencrypt/live/mx.example.com/fullchain.pem
-smtpd_tls_key_file = /etc/letsencrypt/live/mx.example.com/privkey.pem
-smtpd_tls_security_level = may
-smtpd_tls_received_header = yes
-smtpd_tls_CAfile = /etc/ssl/certs/ca-bundle.trust.crt
-smtpd_tls_CApath = /etc/ssl/certs
-smtpd_tls_loglevel = 1
-smtpd_hard_error_limit = 1
-smtpd_helo_required     = yes
-smtpd_error_sleep_time = 0
-smtpd_tls_auth_only = yes
-tls_preempt_cipherlist = yes
-smtpd_tls_mandatory_ciphers = high
-smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3
-smtpd_tls_exclude_ciphers=eNULL:aNULL:LOW:MEDIUM:DES:3DES:RC4:MD5:RSA:SHA1
-smtpd_tls_dh1024_param_file = \${config_directory}/dhparams.pem
-message_size_limit = 20971520
-smtpd_delay_reject = yes
-smtpd_relay_restrictions =
-	permit_mynetworks,
-	permit_sasl_authenticated,
-	defer_unauth_destination
-smtpd_client_restrictions =
-	permit_mynetworks,
-	permit_sasl_authenticated,
-	check_policy_service unix:private/policyd-spf,
-#       check_client_access hash:/etc/postfix/check_client_access,
-#       check_sender_access hash:/etc/postfix/check_sender_access,
-#       check_recipient_access hash:/etc/postfix/check_recipient_access,
-	reject_rbl_client zen.spamhaus.org,
-	permit
-smtpd_helo_restrictions =
-	permit_mynetworks,
-	permit_sasl_authenticated,
-	reject_invalid_helo_hostname,
-	reject_non_fqdn_helo_hostname,
-	reject_unknown_helo_hostname,
-	permit
-smtpd_sender_restrictions =
-	permit_mynetworks,
-# reject_known_sender_login_mismatch is only available in >= 2.11
-#	reject_known_sender_login_mismatch
-	reject_authenticated_sender_login_mismatch,
-	permit_sasl_authenticated,
-#       check_sender_access hash:/etc/postfix/check_sender_access,
-	reject_non_fqdn_sender,
-	reject_unknown_sender_domain,
-	reject_unlisted_sender,
-	permit
-smtpd_recipient_restrictions =
-	permit_mynetworks,
-	permit_sasl_authenticated,
-	reject_unauth_destination,
-#       check_recipient_access hash:/etc/postfix/check_recipient_access,
-	reject_invalid_hostname,
-	reject_non_fqdn_hostname,
-	reject_non_fqdn_sender,
-	reject_non_fqdn_recipient,
-	reject_unknown_sender_domain,
-	reject_unknown_recipient_domain,
-	reject_unknown_sender_domain,
-	permit
+smtpd_sasl_auth_enable = yes
+broken_sasl_auth_clients = yes
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_authenticated_header=yes
 
 # prevent non email owner to send under that email address
 smtpd_sender_login_maps=regexp:/etc/postfix/smtpd_sender_login_maps.regexp
 
-# SASL
-# if you really want noplaintext you need to remove plain and login in /etc/dovecot/dovecot.conf auth_mechansims
-# smtpd_sasl_security_options=noplaintext,noanonymous
-# we only prevent anonymous logins
-smtpd_sasl_security_options=noanonymous
-smtpd_sasl_auth_enable = yes
-broken_sasl_auth_clients = no
-smtpd_sasl_type = dovecot
-smtpd_sasl_path = private/auth
-smtpd_sasl_authenticated_header = no
-#queue_directory = /var/spool/postfix
-
-
-# outgoing
-smtp_tls_CAfile = /etc/ssl/certs/ca-bundle.trust.crt
-smtp_tls_CApath = /etc/ssl/certs
-smtp_tls_loglevel = 1
-smtp_tls_mandatory_ciphers=high
-smtp_tls_mandatory_protocols = !SSLv2, !SSLv3
 # Unfortunately too many people don't know how to do SSL correctly
 #smtp_tls_security_level = verify
 # hence we don't verify :(
@@ -436,19 +361,23 @@ smtpd_client_recipient_rate_limit = 30
 # prevent brute forcing
 # only available in postfix > 3.1
 #smtpd_client_auth_rate_limit = 6
-smtpd_client_event_limit_exceptions = \$mynetworks
+smtpd_client_event_limit_exceptions = $mynetworks
 
 # SPF
 policyd-spf_time_limit = 3600s
 
 # DKIM, DMARC
-milter_default_action = accept
-milter_protocol = 2
-smtpd_milters = inet:localhost:8891,inet:localhost:8893
-non_smtpd_milters = inet:localhost:8891,inet:localhost:8893
+#milter_default_action = accept
+#milter_protocol = 2
+#smtpd_milters = inet:localhost:8891,inet:localhost:8893
+#non_smtpd_milters = inet:localhost:8891,inet:localhost:8893
 
 
 alias_maps = hash:/etc/aliases
+
+# DO NOT SEND ANY MAIL AT ALL
+default_transport = error
+relay_transport = error
 
 PASTECONFIGURATIONFILE
 base64 -d > /etc/postfix/vhosts << PASTECONFIGURATIONFILE
